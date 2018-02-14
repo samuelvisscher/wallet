@@ -11,7 +11,7 @@ const (
 )
 
 type KittyOwnership struct {
-	KId uint64
+	KId     uint64
 	State   OwnershipState
 	Address cipher.Address
 }
