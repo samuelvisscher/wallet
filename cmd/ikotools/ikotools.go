@@ -1,10 +1,10 @@
 package main
 
 import (
-	"gopkg.in/urfave/cli.v1"
 	"github.com/kittycash/iko/src/store"
-	"os"
+	"gopkg.in/urfave/cli.v1"
 	"log"
+	"os"
 )
 
 var app = cli.NewApp()
@@ -14,20 +14,20 @@ func init() {
 	app.Description = "tools for setting up initial kitty offering"
 	app.Commands = cli.Commands{
 		cli.Command{
-			Name: "dir",
+			Name:  "dir",
 			Usage: "tools for managing initial directory",
 			Subcommands: cli.Commands{
 				cli.Command{
-					Name: "init",
+					Name:  "init",
 					Usage: "initialize dir",
 					Flags: cli.FlagsByName{
 						cli.StringFlag{
-							Name: "dir, d",
+							Name:  "dir, d",
 							Usage: "directory to initialize",
 							Value: "iko_dir",
 						},
 						cli.IntFlag{
-							Name: "count, c",
+							Name:  "count, c",
 							Usage: "kitty count for initial kitty offering",
 							Value: 20,
 						},
