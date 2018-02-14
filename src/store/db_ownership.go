@@ -13,30 +13,24 @@ var (
 	ErrUnknown         = errors.New("unknown error")
 )
 
-type OwnershipState struct {
-	kID                uint64
-	Reserved           bool
-	ReservationAddress cipher.Address
-	Owned              bool
-	OwnerAddress       cipher.Address
-}
+
 
 type OwnershipStorer interface {
 	EnsureCount(count int)
-	SetOwnershipState(kID uint64, state OwnershipState) error
-	GetOwnershipState(kID uint64) (OwnershipState, error)
-	GetKittiesOfOwner(addresses ...cipher.Address) []OwnershipState
-	GetKittiesOfReserver(addresses ...cipher.Address) []OwnershipState
+	SetOwnershipState(kID uint64, state KittyOwnerShip) error
+	GetOwnershipState(kID uint64) (KittyOwnerShip, error)
+	GetKittiesOfOwner(addresses ...cipher.Address) []KittyOwnerShip
+	GetKittiesOfReserver(addresses ...cipher.Address) []KittyOwnerShip
 }
 
 type OwnershipMemoryDB struct {
 	sync.RWMutex
-	kitties   []OwnershipState // index (kitty ID), element (owner/reservation state of the kitty)
+	kitties   []KittyOwnerShip // index (kitty ID), element (owner/reservation state of the kitty)
 	owners    map[cipher.Address]map[uint64]struct{}
 	reservers map[cipher.Address]uint64
 }
 
-func NewMutableMemory() *OwnershipMemoryDB {
+func NewOwnershipMemoryDB() *OwnershipMemoryDB {
 	return &OwnershipMemoryDB{
 		owners:    make(map[cipher.Address]map[uint64]struct{}),
 		reservers: make(map[cipher.Address]uint64),
@@ -49,14 +43,14 @@ func (mm *OwnershipMemoryDB) EnsureCount(count int) {
 
 	if len(mm.kitties) < count {
 		mm.kitties = append(mm.kitties,
-			make([]OwnershipState, count-len(mm.kitties))...)
+			make([]KittyOwnerShip, count-len(mm.kitties))...)
 		for i := range mm.kitties {
 			mm.kitties[i].kID = uint64(i)
 		}
 	}
 }
 
-func (mm *OwnershipMemoryDB) SetOwnershipState(kID uint64, state OwnershipState) error {
+func (mm *OwnershipMemoryDB) SetOwnershipState(kID uint64, state KittyOwnerShip) error {
 	mm.Lock()
 	defer mm.Unlock()
 
@@ -93,21 +87,21 @@ func (mm *OwnershipMemoryDB) SetOwnershipState(kID uint64, state OwnershipState)
 	return nil
 }
 
-func (mm *OwnershipMemoryDB) GetOwnershipState(kID uint64) (OwnershipState, error) {
+func (mm *OwnershipMemoryDB) GetOwnershipState(kID uint64) (KittyOwnerShip, error) {
 	mm.RLock()
 	defer mm.RUnlock()
 
 	if kID >= uint64(len(mm.kitties)) {
-		return OwnershipState{}, ErrInvalidID
+		return KittyOwnerShip{}, ErrInvalidID
 	}
 	return mm.kitties[kID], nil
 }
 
-func (mm *OwnershipMemoryDB) GetKittiesOfOwner(addresses ...cipher.Address) []OwnershipState {
+func (mm *OwnershipMemoryDB) GetKittiesOfOwner(addresses ...cipher.Address) []KittyOwnerShip {
 	mm.Lock()
 	defer mm.Unlock()
 
-	var out []OwnershipState
+	var out []KittyOwnerShip
 
 	for _, address := range addresses {
 		if list, ok := mm.owners[address]; ok {
@@ -120,11 +114,11 @@ func (mm *OwnershipMemoryDB) GetKittiesOfOwner(addresses ...cipher.Address) []Ow
 	return out
 }
 
-func (mm *OwnershipMemoryDB) GetKittiesOfReserver(addresses ...cipher.Address) []OwnershipState {
+func (mm *OwnershipMemoryDB) GetKittiesOfReserver(addresses ...cipher.Address) []KittyOwnerShip {
 	mm.Lock()
 	defer mm.Unlock()
 
-	var out []OwnershipState
+	var out []KittyOwnerShip
 
 	for _, address := range addresses {
 		if kID, ok := mm.reservers[address]; ok {

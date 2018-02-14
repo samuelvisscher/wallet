@@ -4,30 +4,31 @@ import (
 	"sync"
 )
 
-type ImmutableStorer interface {
-	Append(meta KittyMeta, img []byte) (int, bool)
+type MetaStorer interface {
+	Append(meta KittyMeta, img []byte) (uint64, bool)
 	ListKitties(pageIndex, pageSize int) []KittyMeta
-	GetKitty(kID int) (KittyMeta, bool)
-	GetImage(kID int, resolution string) ([]byte, bool)
+	GetKitty(kID uint64) (KittyMeta, bool)
+	GetImage(kID uint64, resolution string) ([]byte, bool)
 }
 
-type ImmutableBasic struct {
+type MetaMemoryDB struct {
 	sync.RWMutex
 	metas  []KittyMeta
 	images [][]byte
 }
 
-func (ib *ImmutableBasic) Append(meta KittyMeta, img []byte) (int, bool) {
+func (ib *MetaMemoryDB) Append(meta KittyMeta, img []byte) (uint64, bool) {
 	ib.Lock()
 	defer ib.Unlock()
 
 	// TODO: Check.
+	meta.ID = uint64(len(ib.metas))
 
 	ib.metas, ib.images = append(ib.metas, meta), append(ib.images, img)
-	return len(ib.metas)-1, true
+	return meta.ID, true
 }
 
-func (ib *ImmutableBasic) ListKitties(pageIndex, pageSize int) []KittyMeta {
+func (ib *MetaMemoryDB) ListKitties(pageIndex, pageSize int) []KittyMeta {
 	ib.RLock()
 	defer ib.RUnlock()
 
@@ -47,21 +48,21 @@ func (ib *ImmutableBasic) ListKitties(pageIndex, pageSize int) []KittyMeta {
 	return ib.metas[start:end]
 }
 
-func (ib *ImmutableBasic) GetKitty(kID int) (KittyMeta, bool) {
+func (ib *MetaMemoryDB) GetKitty(kID uint64) (KittyMeta, bool) {
 	ib.RLock()
 	defer ib.RUnlock()
 
-	if kID >= len(ib.metas) {
+	if kID >= uint64(len(ib.metas)) {
 		return ib.metas[kID], false
 	}
 	return ib.metas[kID], true
 }
 
-func (ib *ImmutableBasic) GetImage(kID int, resolution string) ([]byte, bool) {
+func (ib *MetaMemoryDB) GetImage(kID uint64, resolution string) ([]byte, bool) {
 	ib.RLock()
 	defer ib.RUnlock()
 
-	if kID >= len(ib.images) {
+	if kID >= uint64(len(ib.metas)) {
 		return nil, false
 	}
 	return ib.images[kID], true

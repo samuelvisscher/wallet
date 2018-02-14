@@ -6,11 +6,12 @@ import (
 
 type KittyMeta struct {
 	ID           uint64   `json:"ID"`
-	ImageHash    string   `json:"image_hash"`
 	Name         string   `json:"name"`
 	Bio          string   `json:"bio"`
 	Breed        string   `json:"breed"`
 	Attributes   []string `json:"attributes"`
+	PriceBitcoin uint64   `json:"price_bitcoin"`
+	PriceSkycoin uint64   `json:"price_skycoin"`
 }
 
 func (km KittyMeta) Encode() []byte {
