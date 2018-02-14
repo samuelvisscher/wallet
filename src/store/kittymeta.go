@@ -11,8 +11,6 @@ type KittyMeta struct {
 	Bio          string   `json:"bio"`
 	Breed        string   `json:"breed"`
 	Attributes   []string `json:"attributes"`
-	PriceBitcoin int64    `json:"price_bitcoin"`
-	PriceSkycoin int64    `json:"price_skycoin"`
 }
 
 func (km KittyMeta) Encode() []byte {
@@ -20,10 +18,10 @@ func (km KittyMeta) Encode() []byte {
 	return raw
 }
 
-func KittyMetaFromRaw(raw []byte) (*KittyMeta, error) {
-	var km = new(KittyMeta)
-	if e := json.Unmarshal(raw, km); e != nil {
-		return nil, e
+func KittyMetaFromRaw(raw []byte) (KittyMeta, error) {
+	var km KittyMeta
+	if e := json.Unmarshal(raw, &km); e != nil {
+		return km, e
 	}
 	return km, nil
 }
