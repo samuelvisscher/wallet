@@ -2,6 +2,8 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"io/ioutil"
@@ -9,10 +11,7 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"errors"
-	"fmt"
 )
-
 
 // InitDir initializes a directory.
 func InitDir(rootDir string, count int) error {
@@ -98,4 +97,3 @@ func InitMetaStorerFromDir(rootDir string, kittyCount int, db MetaStorer) error 
 	}
 	return nil
 }
-
