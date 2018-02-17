@@ -14,7 +14,6 @@ var (
 )
 
 type OwnershipStorer interface {
-	EnsureCount(count int)
 	SetOwnershipState(kID uint64, state KittyOwnership) error
 	GetOwnershipState(kID uint64) (KittyOwnership, error)
 	GetKittiesOfOwner(addresses ...cipher.Address) []KittyOwnership
@@ -28,24 +27,16 @@ type OwnershipMemoryDB struct {
 	reservers map[cipher.Address]uint64
 }
 
-func NewOwnershipMemoryDB() *OwnershipMemoryDB {
-	return &OwnershipMemoryDB{
+func NewOwnershipMemoryDB(size int) *OwnershipMemoryDB {
+	db := &OwnershipMemoryDB{
+		kitties:   make([]KittyOwnership, size),
 		owners:    make(map[cipher.Address]map[uint64]struct{}),
 		reservers: make(map[cipher.Address]uint64),
 	}
-}
-
-func (mm *OwnershipMemoryDB) EnsureCount(count int) {
-	mm.Lock()
-	defer mm.Unlock()
-
-	if len(mm.kitties) < count {
-		mm.kitties = append(mm.kitties,
-			make([]KittyOwnership, count-len(mm.kitties))...)
-		for i := range mm.kitties {
-			mm.kitties[i].KId = uint64(i)
-		}
+	for i := range db.kitties {
+		db.kitties[i].KId = uint64(i)
 	}
+	return db
 }
 
 func (mm *OwnershipMemoryDB) SetOwnershipState(kID uint64, state KittyOwnership) error {
@@ -117,4 +108,46 @@ func (mm *OwnershipMemoryDB) GetKittiesOfReserver(addresses ...cipher.Address) [
 		}
 	}
 	return out
+}
+
+type OwnershipCertificateStorer interface {
+	Add(cert OwnershipCertificate) error
+	Get(kID uint64) (OwnershipCertificate, bool)
+}
+
+type OwnerCertMemDB struct {
+	sync.Mutex
+	pk   cipher.PubKey
+	dict map[uint64]OwnershipCertificate
+}
+
+func NewOwnerCertMemDB(pk cipher.PubKey) *OwnerCertMemDB {
+	return &OwnerCertMemDB{
+		pk:   pk,
+		dict: make(map[uint64]OwnershipCertificate),
+	}
+}
+
+func (db *OwnerCertMemDB) Add(cert OwnershipCertificate) error {
+	if e := cert.Verify(db.pk); e != nil {
+		return e
+	}
+
+	db.Lock()
+	defer db.Unlock()
+
+	if _, has := db.dict[cert.KId]; has {
+		return ErrAlreadyOwned
+	} else {
+		db.dict[cert.KId] = cert
+		return nil
+	}
+}
+
+func (db *OwnerCertMemDB) Get(kID uint64) (OwnershipCertificate, bool) {
+	db.Lock()
+	defer db.Unlock()
+
+	cert, ok := db.dict[kID]
+	return cert, ok
 }

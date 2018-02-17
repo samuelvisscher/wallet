@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/kittycash/iko/src/store"
+	"github.com/kittycash/iko/src/ex24"
 	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
@@ -33,7 +33,7 @@ func init() {
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						return store.InitDir(
+						return ex24.InitDir(
 							ctx.String("dir"),
 							ctx.Int("count"),
 						)
