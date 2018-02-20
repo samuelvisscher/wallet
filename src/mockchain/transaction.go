@@ -10,4 +10,3 @@ type Transaction struct {
 	To      cipher.Address
 	Sig     cipher.Sig
 }
-
