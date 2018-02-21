@@ -8,6 +8,7 @@ import (
 
 // StateDB records the state of the blockchain.
 type StateDB interface {
+
 	// GetAddressOfKitty obtains the address that the kitty is owned under.
 	// It should return an error if kitty of specified ID does not exist.
 	GetAddressOfKitty(kittyID uint64) (cipher.Address, error)
