@@ -1,15 +1,12 @@
-package mockchain
+package kchain
 
 import (
 	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
-	"errors"
 )
 
 type BlockChainConfig struct {
 	CreatorPK cipher.PubKey
-	PK        cipher.PubKey
-	SK        cipher.SecKey
 	TxAction  TxAction
 }
 
@@ -19,11 +16,8 @@ func (cc *BlockChainConfig) Prepare() error {
 			return nil
 		}
 	}
-	if e := cc.SK.Verify(); e != nil {
+	if e := cc.CreatorPK.Verify(); e != nil {
 		return e
-	}
-	if cipher.PubKeyFromSecKey(cc.SK) != cc.PK {
-		return errors.New("public and secret key does not match")
 	}
 	return nil
 }
@@ -43,7 +37,7 @@ func NewBlockChain(config *BlockChainConfig, chainDB ChainDB, stateDB StateDB) (
 		c:     config,
 		chain: chainDB,
 		state: stateDB,
-		quit: make(chan struct{}),
+		quit:  make(chan struct{}),
 	}
 
 	if e := bc.InitState(); e != nil {
