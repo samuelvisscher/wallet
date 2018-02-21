@@ -1,15 +1,31 @@
 package mockchain
 
 import (
+	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
-	"fmt"
 )
 
+// StateDB records the state of the blockchain.
 type StateDB interface {
+	// GetAddressOfKitty obtains the address that the kitty is owned under.
+	// It should return an error if kitty of specified ID does not exist.
 	GetAddressOfKitty(kittyID uint64) (cipher.Address, error)
+
+	// GetKittiesOfAddress obtains the kitties that are owned under a specified address.
+	// The array of kitty IDs should be in ascending sequential order, from smallest index to highest.
 	GetKittiesOfAddress(address cipher.Address) []uint64
+
+	// AddKitty adds a kitty to the state under the specified address.
+	// This should fail if:
+	// 		- kitty of specified ID already exists in state.
 	AddKitty(kittyID uint64, address cipher.Address) error
+
+	// MoveKitty moves a kitty from one address to another.
+	// This should fail if:
+	//		- kitty of specified ID already belongs to the address ('from' and 'to' addresses are the same).
+	//		- kitty of specified ID does not exist.
+	//		- kitty of specified ID does not originally belong to the 'from' address.
 	MoveKitty(kittyID uint64, from, to cipher.Address) error
 }
 
@@ -38,6 +54,8 @@ func (s *MemoryState) GetAddressOfKitty(kittyID uint64) (cipher.Address, error) 
 	return address, nil
 }
 
+// GetKittiesOfAddress GetKittiesOfAddress
+// TODO (evanlinjin): return output in ascending sequential order.
 func (s *MemoryState) GetKittiesOfAddress(address cipher.Address) []uint64 {
 	s.Lock()
 	defer s.Unlock()
@@ -75,16 +93,26 @@ func (s *MemoryState) AddKitty(kittyID uint64, address cipher.Address) error {
 
 func (s *MemoryState) MoveKitty(kittyID uint64, from, to cipher.Address) error {
 
-	if address, ok := s.kitties[kittyID]; !ok {
+	if from == to {
+		return fmt.Errorf("kitty of id '%d' already belongs to address '%s'",
+			kittyID, from)
+
+	} else if address, ok := s.kitties[kittyID]; !ok {
 		return fmt.Errorf("kitty of id '%d' does not exist",
 			kittyID)
+
 	} else if address == from {
 		return fmt.Errorf("kitty of id '%d' does not belong to address '%s'",
 			kittyID, from)
+
 	}
 
 	s.kitties[kittyID] = to
-	delete(s.addresses[from], kittyID)
+	fromKittiesMap := s.addresses[from]
+	delete(fromKittiesMap, kittyID)
+	if len(fromKittiesMap) == 0 {
+		delete(s.addresses, from)
+	}
 
 	kMap, ok := s.addresses[to]
 	if !ok {

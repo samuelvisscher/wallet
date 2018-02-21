@@ -1,78 +1,93 @@
 package mockchain
 
 import (
+	"errors"
+	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
-	"fmt"
 )
 
 type ChainDB interface {
-	Head() (*SignedBlock, error)
+	Head() (Transaction, error)
 	HeadSeq() uint64
 	Len() uint64
-	AddBlock(block *SignedBlock) error
-	GetBlockOfHash(hash cipher.SHA256) (*SignedBlock, error)
-	GetBlockOfSeq(seq uint64) (*SignedBlock, error)
+	AddTx(tx Transaction) error
+	GetTxOfHash(hash cipher.SHA256) (Transaction, error)
+	GetTxOfSeq(seq uint64) (Transaction, error)
+	TxChan() <-chan *Transaction
 }
 
 type MemoryChain struct {
 	sync.RWMutex
-	blocks []SignedBlock
-	byHash map[cipher.SHA256]*SignedBlock
+	txs    []Transaction
+	byHash map[cipher.SHA256]*Transaction
+	txChan chan *Transaction
 }
 
-func (c *MemoryChain) Head() (*SignedBlock, error) {
+func NewMemoryChain(bufferSize int) *MemoryChain {
+	return &MemoryChain{
+		byHash: make(map[cipher.SHA256]*Transaction),
+		txChan: make(chan *Transaction, bufferSize),
+	}
+}
+
+func (c *MemoryChain) Head() (Transaction, error) {
 	c.RLock()
 	defer c.RUnlock()
 
-	block := c.blocks[len(c.blocks)-1]
-	return &block, nil
+	if len(c.txs) == 0 {
+		return Transaction{}, errors.New("no transactions")
+	}
+	return c.txs[len(c.txs)-1], nil
 }
 
 func (c *MemoryChain) HeadSeq() uint64 {
 	c.RLock()
 	defer c.RUnlock()
 
-	return uint64(len(c.blocks))-1
+	return uint64(len(c.txs)) - 1
 }
 
 func (c *MemoryChain) Len() uint64 {
 	c.RLock()
 	defer c.RUnlock()
 
-	return uint64(len(c.blocks))
+	return uint64(len(c.txs))
 }
 
-func (c *MemoryChain) AddBlock(block *SignedBlock) error {
+func (c *MemoryChain) AddTx(tx Transaction) error {
 	c.Lock()
 	defer c.Unlock()
 
-	// Some checks?
-
-	c.blocks = append(c.blocks, *block)
-	c.byHash[block.GetHeaderHash()] = &c.blocks[len(c.blocks)-1]
+	c.txs = append(c.txs, tx)
+	c.byHash[tx.Hash()] = &c.txs[len(c.txs)-1]
+	go func() {
+		c.txChan <- &c.txs[len(c.txs)-1]
+	}()
 	return nil
 }
 
-func (c *MemoryChain) GetBlockOfHash(hash cipher.SHA256) (*SignedBlock, error) {
+func (c *MemoryChain) GetTxOfHash(hash cipher.SHA256) (Transaction, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	block, ok := c.byHash[hash]
+	tx, ok := c.byHash[hash]
 	if !ok {
-		return nil, fmt.Errorf("block of hash '%s' does not exist", hash.Hex())
+		return Transaction{}, fmt.Errorf("tx of hash '%s' does not exist", hash.Hex())
 	}
-
-	return &(*block), nil
+	return *tx, nil
 }
 
-func (c *MemoryChain) GetBlockOfSeq(seq uint64) (*SignedBlock, error) {
+func (c *MemoryChain) GetTxOfSeq(seq uint64) (Transaction, error) {
 	c.RLock()
 	defer c.RUnlock()
 
-	if seq >= uint64(len(c.blocks)) {
-		return nil, fmt.Errorf("block of sequence '%d' does not exist", seq)
+	if seq >= uint64(len(c.txs)) {
+		return Transaction{}, fmt.Errorf("block of sequence '%d' does not exist", seq)
 	}
+	return c.txs[seq], nil
+}
 
-	return &c.blocks[seq], nil
+func (c *MemoryChain) TxChan() <-chan *Transaction {
+	return nil
 }
