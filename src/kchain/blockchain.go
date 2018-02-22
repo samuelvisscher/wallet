@@ -125,6 +125,13 @@ func (bc *BlockChain) GetTxOfHash(txHash cipher.SHA256) (Transaction, error) {
 	return bc.chain.GetTxOfHash(txHash)
 }
 
+func (bc *BlockChain) GetTxOfSeq(seq uint64) (Transaction, error) {
+	bc.mux.RLock()
+	defer bc.mux.RUnlock()
+
+	return bc.chain.GetTxOfSeq(seq)
+}
+
 func (bc *BlockChain) GetKittyAddress(kittyID uint64) (cipher.Address, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
