@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/kittycash/iko/src/store"
+	"github.com/kittycash/iko/src/ex24/store"
 	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
