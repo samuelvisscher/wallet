@@ -119,6 +119,27 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 			})
 		})
 
+	type AddressReply struct {
+		Address      string   `json:"address"`
+		Kitties      []uint64 `json:"kitties"`
+		Transactions []string `json:"transactions"`
+	}
+
+	mux.HandleFunc("/api/address/",
+		func(w http.ResponseWriter, r *http.Request) {
+			address, e := cipher.DecodeBase58Address(path.Base(r.URL.EscapedPath()))
+			if e != nil {
+				sendErr(w, e)
+				return
+			}
+			info := g.BlockChain.GetAddressInfo(address)
+			sendOK(w, AddressReply{
+				Address:      address.String(),
+				Kitties:      info.Kitties,
+				Transactions: []string{"TO_BE_IMPLEMENTED"},
+			})
+		})
+
 	return nil
 }
 

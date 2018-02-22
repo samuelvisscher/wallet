@@ -139,6 +139,21 @@ func (bc *BlockChain) GetKittyAddress(kittyID uint64) (cipher.Address, error) {
 	return bc.state.GetAddressOfKitty(kittyID)
 }
 
+type AddressInfo struct {
+	Address cipher.Address
+	Kitties []uint64
+}
+
+func (bc *BlockChain) GetAddressInfo(address cipher.Address) *AddressInfo {
+	bc.mux.RLock()
+	defer bc.mux.RUnlock()
+
+	return &AddressInfo{
+		Address: address,
+		Kitties: bc.state.GetKittiesOfAddress(address),
+	}
+}
+
 func (bc *BlockChain) InjectTx(tx *Transaction) error {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
