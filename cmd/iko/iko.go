@@ -1,22 +1,22 @@
 package main
 
 import (
-	"gopkg.in/urfave/cli.v1"
-	"os"
-	"log"
+	"github.com/kittycash/iko/src/http"
 	"github.com/kittycash/iko/src/kchain"
 	"github.com/skycoin/skycoin/src/cipher"
+	"gopkg.in/sirupsen/logrus.v1"
+	"gopkg.in/urfave/cli.v1"
+	"os"
 	"os/signal"
-	"github.com/kittycash/iko/src/http"
 )
 
 const (
 	MasterPublicKey = "master-public-key"
 
-	MemoryMode      = "memory"
+	MemoryMode = "memory"
 
-	TestMode        = "test"
-	TestSecretKey   = "test-secret-key"
+	TestMode           = "test"
+	TestSecretKey      = "test-secret-key"
 	TestInjectionCount = "test-injection-count"
 )
 
@@ -24,7 +24,10 @@ func Flag(flag, short string) string {
 	return flag + ", " + short
 }
 
-var app = cli.NewApp()
+var (
+	app = cli.NewApp()
+	log = logrus.New()
+)
 
 func init() {
 	app.Name = "iko"
@@ -32,25 +35,25 @@ func init() {
 	app.Flags = cli.FlagsByName{
 
 		cli.StringFlag{
-			Name: Flag(MasterPublicKey, "pk"),
+			Name:  Flag(MasterPublicKey, "pk"),
 			Usage: "public key to trust as master decision maker",
 		},
 
 		cli.BoolFlag{
-			Name: Flag(MemoryMode, "m"),
+			Name:  Flag(MemoryMode, "m"),
 			Usage: "whether to run in memory-only mode",
 		},
 
 		cli.BoolFlag{
-			Name: Flag(TestMode, "t"),
+			Name:  Flag(TestMode, "t"),
 			Usage: "whether to use test data for run",
 		},
 		cli.StringFlag{
-			Name: Flag(TestSecretKey, "sk"),
+			Name:  Flag(TestSecretKey, "sk"),
 			Usage: "only valid in test mode, used for injecting transactions",
 		},
 		cli.IntFlag{
-			Name: Flag(TestInjectionCount, "tc"),
+			Name:  Flag(TestInjectionCount, "tc"),
 			Usage: "only valid in test mode, injects a number of initial transactions for testing",
 		},
 	}
@@ -63,9 +66,9 @@ func action(ctx *cli.Context) error {
 	var (
 		masterPK   = cipher.MustPubKeyFromHex(ctx.String(MasterPublicKey))
 		memoryMode = ctx.Bool(MemoryMode)
-		testMode  = ctx.Bool(TestMode)
-		testSK    = cipher.MustSecKeyFromHex(ctx.String(TestSecretKey))
-		testCount = ctx.Int(TestInjectionCount)
+		testMode   = ctx.Bool(TestMode)
+		testSK     = cipher.MustSecKeyFromHex(ctx.String(TestSecretKey))
+		testCount  = ctx.Int(TestInjectionCount)
 	)
 
 	var (
@@ -102,6 +105,10 @@ func action(ctx *cli.Context) error {
 		var tx *kchain.Transaction
 		for i := 0; i < testCount; i++ {
 			tx = kchain.NewGenTx(tx, uint64(i), testSK)
+
+			log.WithField("tx", tx.String()).
+				Debugf("test:tx_inject(%d)", i)
+
 			if e := bc.InjectTx(tx); e != nil {
 				return e
 			}
@@ -111,7 +118,7 @@ func action(ctx *cli.Context) error {
 	// Prepare http server.
 	httpServer, e := http.NewServer(
 		&http.ServerConfig{
-			Address: "127.0.0.1:1234",
+			Address:   "127.0.0.1:8080",
 			EnableTLS: false,
 		},
 		&http.Gateway{
