@@ -13,18 +13,18 @@ type ServerConfig struct {
 }
 
 type Server struct {
-	c *ServerConfig
+	c    *ServerConfig
 	srv  *http.Server
 	mux  *http.ServeMux
-	api   *Gateway
+	api  *Gateway
 	quit chan struct{}
 }
 
 func NewServer(config *ServerConfig, api *Gateway) (*Server, error) {
 	var server = &Server{
-		c: config,
-		mux: http.NewServeMux(),
-		api: api,
+		c:    config,
+		mux:  http.NewServeMux(),
+		api:  api,
 		quit: make(chan struct{}),
 	}
 	if e := server.prepareMux(); e != nil {

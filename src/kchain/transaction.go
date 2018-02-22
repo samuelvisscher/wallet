@@ -2,6 +2,7 @@ package kchain
 
 import (
 	"errors"
+	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/skycoin/src/cipher/encoder"
 	"log"
@@ -137,4 +138,10 @@ func (tx Transaction) IsKittyGen(pk cipher.PubKey) bool {
 	}
 	// Accept.
 	return true
+}
+
+// String returns human readable string of transaction.
+func (tx Transaction) String() string {
+	return fmt.Sprintf("prev:%s|seq:%d|ts:%d|kitty_id:%d|from:%s|to:%s|sig:%s",
+		tx.Prev.Hex(), tx.Seq, tx.TS, tx.KittyID, tx.From.String(), tx.To.String(), tx.Sig.Hex())
 }

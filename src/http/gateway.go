@@ -1,10 +1,11 @@
 package http
 
 import (
+	"encoding/json"
 	"github.com/kittycash/iko/src/kchain"
 	"net/http"
-	"encoding/json"
 	"strconv"
+	"path"
 )
 
 type Gateway struct {
@@ -13,13 +14,27 @@ type Gateway struct {
 
 func (g *Gateway) host(mux *http.ServeMux) error {
 
-	mux.HandleFunc("/api/kitty",
+	mux.HandleFunc("/api/kitty/",
 		func(w http.ResponseWriter, r *http.Request) {
-			kittyID, e := strconv.ParseUint(r.URL.Query().Get("id"), 10, 64)
+			kittyID, e := strconv.ParseUint(path.Base(r.URL.EscapedPath()), 10, 64)
 			if e != nil {
 				sendErr(w, e)
+				return
 			}
-			send(w)(g.BlockChain.GetKittyAddress(kittyID))
+			address, e := g.BlockChain.GetKittyAddress(kittyID)
+			if e != nil {
+				sendErr(w, e)
+				return
+			}
+			sendOK(w, struct {
+				KittyID uint64 `json:"kitty_id"`
+				Address string `json:"address"`
+				Transactions []string `json:"transactions"`
+			}{
+				KittyID: kittyID,
+				Address: address.String(),
+				Transactions: []string{"TO_BE_IMPLEMENTED"},
+			})
 		})
 
 	return nil

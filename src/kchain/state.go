@@ -82,6 +82,8 @@ func (s *MemoryState) AddKitty(kittyID uint64, address cipher.Address) error {
 			kittyID)
 	}
 
+	s.kitties[kittyID] = address
+
 	kMap, ok := s.addresses[address]
 	if !ok {
 		kMap = make(map[uint64]struct{}, 1)

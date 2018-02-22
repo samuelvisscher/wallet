@@ -2,6 +2,8 @@ package kchain
 
 import (
 	"github.com/skycoin/skycoin/src/cipher"
+	"gopkg.in/sirupsen/logrus.v1"
+	"os"
 	"sync"
 )
 
@@ -26,6 +28,7 @@ type BlockChain struct {
 	c     *BlockChainConfig
 	chain ChainDB
 	state StateDB
+	log   *logrus.Logger
 	mux   sync.RWMutex
 
 	wg   sync.WaitGroup
@@ -37,7 +40,13 @@ func NewBlockChain(config *BlockChainConfig, chainDB ChainDB, stateDB StateDB) (
 		c:     config,
 		chain: chainDB,
 		state: stateDB,
-		quit:  make(chan struct{}),
+		log: &logrus.Logger{
+			Out:       os.Stderr,
+			Formatter: new(logrus.TextFormatter),
+			Hooks:     make(logrus.LevelHooks),
+			Level:     logrus.DebugLevel,
+		},
+		quit: make(chan struct{}),
 	}
 
 	if e := bc.InitState(); e != nil {
@@ -51,8 +60,8 @@ func NewBlockChain(config *BlockChainConfig, chainDB ChainDB, stateDB StateDB) (
 }
 
 func (bc *BlockChain) InitState() error {
-	var prev *Transaction
 
+	var prev *Transaction
 	for i := uint64(1); i < bc.chain.Len(); i++ {
 
 		// Get transaction.
@@ -60,6 +69,7 @@ func (bc *BlockChain) InitState() error {
 		if e != nil {
 			return e
 		}
+		bc.log.WithField("tx", tx.String()).Debugf("InitState (%d)", i)
 
 		// Check hash, seq and sig of tx.
 		if e := tx.Verify(prev); e != nil {
@@ -137,6 +147,11 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 	}
 
 	if tx.IsKittyGen(bc.c.CreatorPK) {
+		bc.log.
+			WithField("kitty_id", tx.KittyID).
+			WithField("address", tx.To.String()).
+			Debug("adding kitty to state")
+
 		if e := bc.state.AddKitty(tx.KittyID, tx.To); e != nil {
 			return e
 		}
