@@ -12,7 +12,7 @@ import (
 type TxAction func(tx *Transaction) error
 
 type Transaction struct {
-	Prev cipher.SHA256
+	Prev TxHash
 	Seq  uint64 // Each transaction has a sequence.
 	TS   int64  // Timestamp.
 
@@ -30,7 +30,7 @@ func NewGenTx(prev *Transaction, kittyID KittyID, sk cipher.SecKey) *Transaction
 	)
 	if prev == nil {
 		tx = &Transaction{
-			Prev:    cipher.SHA256{},
+			Prev:    TxHash{},
 			Seq:     0,
 			TS:      ts,
 			KittyID: kittyID,
@@ -68,13 +68,13 @@ func (tx Transaction) Serialize() []byte {
 	return encoder.Serialize(tx)
 }
 
-func (tx Transaction) Hash() cipher.SHA256 {
-	return cipher.SumSHA256(tx.Serialize())
+func (tx Transaction) Hash() TxHash {
+	return TxHash(cipher.SumSHA256(tx.Serialize()))
 }
 
 func (tx Transaction) HashInner() cipher.SHA256 {
 	tx.Sig = cipher.Sig{}
-	return tx.Hash()
+	return cipher.SHA256(tx.Hash())
 }
 
 func (tx Transaction) Sign(sk cipher.SecKey) cipher.Sig {
@@ -101,7 +101,7 @@ func (tx Transaction) Verify(prev *Transaction) error {
 
 	// Check hash.
 	if isGenesis {
-		if tx.Prev != (cipher.SHA256{}) {
+		if tx.Prev != (TxHash{}) {
 			return errors.New("invalid prev hash")
 		}
 	} else {
@@ -123,7 +123,7 @@ func (tx Transaction) Verify(prev *Transaction) error {
 
 	// Check timestamp.
 	if prev != nil {
-		if tx.TS <= prev.TS || tx.TS > time.Now().UnixNano() + int64(time.Minute) {
+		if tx.TS <= prev.TS || tx.TS > time.Now().UnixNano()+int64(time.Minute) {
 			return errors.New("invalid ts")
 		}
 	}
@@ -153,4 +153,20 @@ func (tx Transaction) IsKittyGen(pk cipher.PubKey) bool {
 func (tx Transaction) String() string {
 	return fmt.Sprintf("prev:%s|seq:%d|ts:%d|kitty_id:%d|from:%s|to:%s|sig:%s",
 		tx.Prev.Hex(), tx.Seq, tx.TS, tx.KittyID, tx.From.String(), tx.To.String(), tx.Sig.Hex())
+}
+
+type TxHash cipher.SHA256
+
+func (h TxHash) Hex() string {
+	return cipher.SHA256(h).Hex()
+}
+
+type TxHashes []TxHash
+
+func (h TxHashes) ToStringArray() []string {
+	out := make([]string, len(h))
+	for i, hash := range h {
+		out[i] = hash.Hex()
+	}
+	return out
 }

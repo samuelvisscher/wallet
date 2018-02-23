@@ -9,66 +9,66 @@ import (
 // StateDB records the state of the blockchain.
 type StateDB interface {
 
-	// GetAddressOfKitty obtains the address that the kitty is owned under.
-	// It should return an error if kitty of specified ID does not exist.
-	GetAddressOfKitty(kittyID KittyID) (cipher.Address, error)
+	// GetKittyState obtains the current state of a kitty.
+	// This consists of:
+	//		- The address that the kitty resides under.
+	//		- Transactions associated with the kitty.
+	// It should return false if kitty of specified ID does not exist.
+	GetKittyState(kittyID KittyID) (*KittyState, bool)
 
-	// GetKittiesOfAddress obtains the kitties that are owned under a specified address.
+	// GetAddressState obtains the current state of an address.
+	// This consists of:
+	//		- Kitties owned by the address.
+	//		- Transactions associated with the address.
 	// The array of kitty IDs should be in ascending sequential order, from smallest index to highest.
-	GetKittiesOfAddress(address cipher.Address) KittyIDs
+	GetAddressState(address cipher.Address) *AddressState
 
 	// AddKitty adds a kitty to the state under the specified address.
 	// This should fail if:
 	// 		- kitty of specified ID already exists in state.
-	AddKitty(kittyID KittyID, address cipher.Address) error
+	AddKitty(tx TxHash, kittyID KittyID, address cipher.Address) error
 
 	// MoveKitty moves a kitty from one address to another.
 	// This should fail if:
 	//		- kitty of specified ID already belongs to the address ('from' and 'to' addresses are the same).
 	//		- kitty of specified ID does not exist.
 	//		- kitty of specified ID does not originally belong to the 'from' address.
-	MoveKitty(kittyID KittyID, from, to cipher.Address) error
+	MoveKitty(tx TxHash, kittyID KittyID, from, to cipher.Address) error
 }
 
 type MemoryState struct {
 	sync.Mutex
-	kitties   map[KittyID]cipher.Address
-	addresses map[cipher.Address]*KittyIDs
+	kitties   map[KittyID]*KittyState
+	addresses map[cipher.Address]*AddressState
 }
 
 func NewMemoryState() *MemoryState {
 	return &MemoryState{
-		kitties:   make(map[KittyID]cipher.Address),
-		addresses: make(map[cipher.Address]*KittyIDs),
+		kitties:   make(map[KittyID]*KittyState),
+		addresses: make(map[cipher.Address]*AddressState),
 	}
 }
 
-func (s *MemoryState) GetAddressOfKitty(kittyID KittyID) (cipher.Address, error) {
+func (s *MemoryState) GetKittyState(kittyID KittyID) (*KittyState, bool) {
 	s.Lock()
 	defer s.Unlock()
 
-	address, ok := s.kitties[kittyID]
-	if !ok {
-		return address, fmt.Errorf("kitty of id '%d' is not recorded in state",
-			kittyID)
-	}
-	return address, nil
+	kState, ok := s.kitties[kittyID]
+	return kState, ok
 }
 
-// GetKittiesOfAddress GetKittiesOfAddress
-// TODO (evanlinjin): return output in ascending sequential order.
-func (s MemoryState) GetKittiesOfAddress(address cipher.Address) KittyIDs {
+func (s MemoryState) GetAddressState(address cipher.Address) *AddressState {
 	s.Lock()
 	defer s.Unlock()
 
-	kitties, ok := s.addresses[address]
+	aState, ok := s.addresses[address]
 	if !ok {
-		return make([]KittyID, 0)
+		aState = NewAddressState()
 	}
-	return *kitties
+	return aState
 }
 
-func (s *MemoryState) AddKitty(kittyID KittyID, address cipher.Address) error {
+func (s *MemoryState) AddKitty(tx TxHash, kittyID KittyID, address cipher.Address) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -77,17 +77,30 @@ func (s *MemoryState) AddKitty(kittyID KittyID, address cipher.Address) error {
 			kittyID)
 	}
 
-	s.kitties[kittyID] = address
-
-	if kitties, ok := s.addresses[address]; !ok {
-		s.addresses[address] = &KittyIDs{kittyID}
+	if kState, ok := s.kitties[kittyID]; !ok {
+		s.kitties[kittyID] = &KittyState{
+			Address:      address,
+			Transactions: TxHashes{tx},
+		}
 	} else {
-		kitties.Add(kittyID)
+		kState.Address = address
+		kState.Transactions = append(kState.Transactions, tx)
 	}
+
+	if aState, ok := s.addresses[address]; !ok {
+		s.addresses[address] = &AddressState{
+			Kitties:      KittyIDs{kittyID},
+			Transactions: TxHashes{tx},
+		}
+	} else {
+		aState.Kitties.Add(kittyID)
+		aState.Transactions = append(aState.Transactions, tx)
+	}
+
 	return nil
 }
 
-func (s *MemoryState) MoveKitty(kittyID KittyID, from, to cipher.Address) error {
+func (s *MemoryState) MoveKitty(tx TxHash, kittyID KittyID, from, to cipher.Address) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -95,22 +108,37 @@ func (s *MemoryState) MoveKitty(kittyID KittyID, from, to cipher.Address) error 
 		return fmt.Errorf("kitty of id '%d' already belongs to address '%s'",
 			kittyID, from)
 
-	} else if address, ok := s.kitties[kittyID]; !ok {
+	} else if kState, ok := s.kitties[kittyID]; !ok {
 		return fmt.Errorf("kitty of id '%d' does not exist",
 			kittyID)
 
-	} else if address != from {
+	} else if kState.Address != from {
 		return fmt.Errorf("kitty of id '%d' does not belong to address '%s'",
 			kittyID, from)
 	}
 
-	s.kitties[kittyID] = to
-	s.addresses[from].Remove(kittyID)
+	kState := s.kitties[kittyID]
+	kState.Address = to
+	kState.Transactions = append(kState.Transactions, tx)
 
-	if kitties, ok := s.addresses[to]; !ok {
-		s.addresses[to] = &KittyIDs{kittyID}
+	if fromState, ok := s.addresses[from]; !ok {
+		panic(fmt.Errorf(
+			"state of 'from' address '%s' does not exist in state",
+			from.String()))
 	} else {
-		kitties.Add(kittyID)
+		fromState.Kitties.Remove(kittyID)
+		fromState.Transactions = append(fromState.Transactions, tx)
 	}
+
+	if toState, ok := s.addresses[to]; !ok {
+		s.addresses[to] = &AddressState{
+			Kitties:      KittyIDs{kittyID},
+			Transactions: TxHashes{tx},
+		}
+	} else {
+		toState.Kitties.Add(kittyID)
+		toState.Transactions = append(toState.Transactions, tx)
+	}
+
 	return nil
 }
