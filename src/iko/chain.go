@@ -3,7 +3,6 @@ package iko
 import (
 	"errors"
 	"fmt"
-	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
 )
 
@@ -12,7 +11,7 @@ type ChainDB interface {
 	HeadSeq() uint64
 	Len() uint64
 	AddTx(tx Transaction) error
-	GetTxOfHash(hash cipher.SHA256) (Transaction, error)
+	GetTxOfHash(hash TxHash) (Transaction, error)
 	GetTxOfSeq(seq uint64) (Transaction, error)
 	TxChan() <-chan *Transaction
 }
@@ -20,13 +19,13 @@ type ChainDB interface {
 type MemoryChain struct {
 	sync.RWMutex
 	txs    []Transaction
-	byHash map[cipher.SHA256]*Transaction
+	byHash map[TxHash]*Transaction
 	txChan chan *Transaction
 }
 
 func NewMemoryChain(bufferSize int) *MemoryChain {
 	return &MemoryChain{
-		byHash: make(map[cipher.SHA256]*Transaction),
+		byHash: make(map[TxHash]*Transaction),
 		txChan: make(chan *Transaction, bufferSize),
 	}
 }
@@ -67,7 +66,7 @@ func (c *MemoryChain) AddTx(tx Transaction) error {
 	return nil
 }
 
-func (c *MemoryChain) GetTxOfHash(hash cipher.SHA256) (Transaction, error) {
+func (c *MemoryChain) GetTxOfHash(hash TxHash) (Transaction, error) {
 	c.Lock()
 	defer c.Unlock()
 

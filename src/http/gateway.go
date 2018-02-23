@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/kittycash/wallet/src/iko"
 	"github.com/skycoin/skycoin/src/cipher"
 	"net/http"
@@ -29,15 +30,15 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 				sendErr(w, e)
 				return
 			}
-			address, e := g.IKO.GetKittyAddress(iko.KittyID(kittyID))
-			if e != nil {
-				sendErr(w, e)
+			kState, ok := g.IKO.GetKittyState(kittyID)
+			if !ok {
+				sendErr(w, fmt.Errorf("kitty of id '%s' not found", kittyID))
 				return
 			}
 			sendOK(w, KittyReply{
 				KittyID:      kittyID,
-				Address:      address.String(),
-				Transactions: []string{"TO_BE_IMPLEMENTED"},
+				Address:      kState.Address.String(),
+				Transactions: kState.Transactions.ToStringArray(),
 			})
 		})
 
@@ -68,7 +69,7 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 				sendErr(w, e)
 				return
 			}
-			tx, e := g.IKO.GetTxOfHash(txHash)
+			tx, e := g.IKO.GetTxOfHash(iko.TxHash(txHash))
 			if e != nil {
 				sendErr(w, e)
 				return
@@ -132,11 +133,11 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 				sendErr(w, e)
 				return
 			}
-			info := g.IKO.GetAddressInfo(address)
+			aState := g.IKO.GetAddressState(address)
 			sendOK(w, AddressReply{
 				Address:      address.String(),
-				Kitties:      info.Kitties,
-				Transactions: []string{"TO_BE_IMPLEMENTED"},
+				Kitties:      aState.Kitties,
+				Transactions: aState.Transactions.ToStringArray(),
 			})
 		})
 

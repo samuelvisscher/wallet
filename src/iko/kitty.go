@@ -1,6 +1,7 @@
 package iko
 
 import (
+	"github.com/skycoin/skycoin/src/cipher"
 	"sort"
 	"strconv"
 )
@@ -31,5 +32,22 @@ func (ids *KittyIDs) Remove(id KittyID) {
 			*ids = append((*ids)[:i], (*ids)[i+1:]...)
 			return
 		}
+	}
+}
+
+type KittyState struct {
+	Address      cipher.Address
+	Transactions TxHashes
+}
+
+type AddressState struct {
+	Kitties      KittyIDs
+	Transactions TxHashes
+}
+
+func NewAddressState() *AddressState {
+	return &AddressState{
+		Kitties:      make(KittyIDs, 0),
+		Transactions: make(TxHashes, 0),
 	}
 }

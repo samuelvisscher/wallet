@@ -82,11 +82,11 @@ func (bc *BlockChain) InitState() error {
 		// If tx is to structured to create a kitty, attempt to add to state.
 		// Otherwise, attempt to transfer it's ownership in the state.
 		if tx.IsKittyGen(bc.c.CreatorPK) {
-			if e := bc.state.AddKitty(tx.KittyID, tx.To); e != nil {
+			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
 				return e
 			}
 		} else {
-			if e := bc.state.MoveKitty(tx.KittyID, tx.From, tx.To); e != nil {
+			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
 				return e
 			}
 		}
@@ -121,7 +121,7 @@ func (bc *BlockChain) GetHeadTx() (Transaction, error) {
 	return bc.chain.Head()
 }
 
-func (bc *BlockChain) GetTxOfHash(txHash cipher.SHA256) (Transaction, error) {
+func (bc *BlockChain) GetTxOfHash(txHash TxHash) (Transaction, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
@@ -135,26 +135,18 @@ func (bc *BlockChain) GetTxOfSeq(seq uint64) (Transaction, error) {
 	return bc.chain.GetTxOfSeq(seq)
 }
 
-func (bc *BlockChain) GetKittyAddress(kittyID KittyID) (cipher.Address, error) {
+func (bc *BlockChain) GetKittyState(kittyID KittyID) (*KittyState, bool) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
-	return bc.state.GetAddressOfKitty(kittyID)
+	return bc.state.GetKittyState(kittyID)
 }
 
-type AddressInfo struct {
-	Address cipher.Address
-	Kitties []KittyID
-}
-
-func (bc *BlockChain) GetAddressInfo(address cipher.Address) *AddressInfo {
+func (bc *BlockChain) GetAddressState(address cipher.Address) *AddressState {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
-	return &AddressInfo{
-		Address: address,
-		Kitties: bc.state.GetKittiesOfAddress(address),
-	}
+	return bc.state.GetAddressState(address)
 }
 
 func (bc *BlockChain) InjectTx(tx *Transaction) error {
@@ -177,11 +169,11 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 			WithField("address", tx.To.String()).
 			Debug("adding kitty to state")
 
-		if e := bc.state.AddKitty(tx.KittyID, tx.To); e != nil {
+		if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
 			return e
 		}
 	} else {
-		if e := bc.state.MoveKitty(tx.KittyID, tx.From, tx.To); e != nil {
+		if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
 			return e
 		}
 	}
