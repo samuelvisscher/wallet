@@ -90,6 +90,7 @@ func (tx Transaction) Sign(sk cipher.SecKey) cipher.Sig {
 // Verify checks the hash, seq and signature of the transaction.
 //		- Previous tx hash.
 //		- Tx sequence.
+//		- Tx timestamp (needs to be ahead of the previous tx, and behind ts now with threshold).
 //		- Tx signature.
 // Verify does not check:
 //		- Whether from address actually owns the kitty of ID.
@@ -120,6 +121,14 @@ func (tx Transaction) Verify(prev *Transaction) error {
 		}
 	}
 
+	// Check timestamp.
+	if prev != nil {
+		if tx.TS <= prev.TS || tx.TS > time.Now().UnixNano() + int64(time.Minute) {
+			return errors.New("invalid ts")
+		}
+	}
+
+	// Check signature.
 	return cipher.ChkSig(tx.From, tx.HashInner(), tx.Sig)
 }
 
