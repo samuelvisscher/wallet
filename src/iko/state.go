@@ -1,4 +1,4 @@
-package kchain
+package iko
 
 import (
 	"fmt"
@@ -11,39 +11,39 @@ type StateDB interface {
 
 	// GetAddressOfKitty obtains the address that the kitty is owned under.
 	// It should return an error if kitty of specified ID does not exist.
-	GetAddressOfKitty(kittyID uint64) (cipher.Address, error)
+	GetAddressOfKitty(kittyID KittyID) (cipher.Address, error)
 
 	// GetKittiesOfAddress obtains the kitties that are owned under a specified address.
 	// The array of kitty IDs should be in ascending sequential order, from smallest index to highest.
-	GetKittiesOfAddress(address cipher.Address) []uint64
+	GetKittiesOfAddress(address cipher.Address) KittyIDs
 
 	// AddKitty adds a kitty to the state under the specified address.
 	// This should fail if:
 	// 		- kitty of specified ID already exists in state.
-	AddKitty(kittyID uint64, address cipher.Address) error
+	AddKitty(kittyID KittyID, address cipher.Address) error
 
 	// MoveKitty moves a kitty from one address to another.
 	// This should fail if:
 	//		- kitty of specified ID already belongs to the address ('from' and 'to' addresses are the same).
 	//		- kitty of specified ID does not exist.
 	//		- kitty of specified ID does not originally belong to the 'from' address.
-	MoveKitty(kittyID uint64, from, to cipher.Address) error
+	MoveKitty(kittyID KittyID, from, to cipher.Address) error
 }
 
 type MemoryState struct {
 	sync.Mutex
-	kitties   map[uint64]cipher.Address
-	addresses map[cipher.Address]map[uint64]struct{}
+	kitties   map[KittyID]cipher.Address
+	addresses map[cipher.Address]*KittyIDs
 }
 
 func NewMemoryState() *MemoryState {
 	return &MemoryState{
-		kitties:   make(map[uint64]cipher.Address),
-		addresses: make(map[cipher.Address]map[uint64]struct{}),
+		kitties:   make(map[KittyID]cipher.Address),
+		addresses: make(map[cipher.Address]*KittyIDs),
 	}
 }
 
-func (s *MemoryState) GetAddressOfKitty(kittyID uint64) (cipher.Address, error) {
+func (s *MemoryState) GetAddressOfKitty(kittyID KittyID) (cipher.Address, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -57,23 +57,18 @@ func (s *MemoryState) GetAddressOfKitty(kittyID uint64) (cipher.Address, error) 
 
 // GetKittiesOfAddress GetKittiesOfAddress
 // TODO (evanlinjin): return output in ascending sequential order.
-func (s *MemoryState) GetKittiesOfAddress(address cipher.Address) []uint64 {
+func (s MemoryState) GetKittiesOfAddress(address cipher.Address) KittyIDs {
 	s.Lock()
 	defer s.Unlock()
 
-	kMap, ok := s.addresses[address]
+	kitties, ok := s.addresses[address]
 	if !ok {
-		return make([]uint64, 0)
+		return make([]KittyID, 0)
 	}
-
-	kittyIDs, i := make([]uint64, len(kMap)), 0
-	for id := range kMap {
-		kittyIDs[i], i = id, i+1
-	}
-	return kittyIDs
+	return *kitties
 }
 
-func (s *MemoryState) AddKitty(kittyID uint64, address cipher.Address) error {
+func (s *MemoryState) AddKitty(kittyID KittyID, address cipher.Address) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -84,17 +79,17 @@ func (s *MemoryState) AddKitty(kittyID uint64, address cipher.Address) error {
 
 	s.kitties[kittyID] = address
 
-	kMap, ok := s.addresses[address]
-	if !ok {
-		kMap = make(map[uint64]struct{}, 1)
-		s.addresses[address] = kMap
+	if kitties, ok := s.addresses[address]; !ok {
+		s.addresses[address] = &KittyIDs{kittyID}
+	} else {
+		kitties.Add(kittyID)
 	}
-	kMap[kittyID] = struct{}{}
-
 	return nil
 }
 
-func (s *MemoryState) MoveKitty(kittyID uint64, from, to cipher.Address) error {
+func (s *MemoryState) MoveKitty(kittyID KittyID, from, to cipher.Address) error {
+	s.Lock()
+	defer s.Unlock()
 
 	if from == to {
 		return fmt.Errorf("kitty of id '%d' already belongs to address '%s'",
@@ -104,25 +99,18 @@ func (s *MemoryState) MoveKitty(kittyID uint64, from, to cipher.Address) error {
 		return fmt.Errorf("kitty of id '%d' does not exist",
 			kittyID)
 
-	} else if address == from {
+	} else if address != from {
 		return fmt.Errorf("kitty of id '%d' does not belong to address '%s'",
 			kittyID, from)
-
 	}
 
 	s.kitties[kittyID] = to
-	fromKittiesMap := s.addresses[from]
-	delete(fromKittiesMap, kittyID)
-	if len(fromKittiesMap) == 0 {
-		delete(s.addresses, from)
-	}
+	s.addresses[from].Remove(kittyID)
 
-	kMap, ok := s.addresses[to]
-	if !ok {
-		kMap = make(map[uint64]struct{}, 1)
-		s.addresses[to] = kMap
+	if kitties, ok := s.addresses[to]; !ok {
+		s.addresses[to] = &KittyIDs{kittyID}
+	} else {
+		kitties.Add(kittyID)
 	}
-	kMap[kittyID] = struct{}{}
-
 	return nil
 }

@@ -1,4 +1,4 @@
-package kchain
+package iko
 
 import (
 	"github.com/skycoin/skycoin/src/cipher"
@@ -36,6 +36,9 @@ type BlockChain struct {
 }
 
 func NewBlockChain(config *BlockChainConfig, chainDB ChainDB, stateDB StateDB) (*BlockChain, error) {
+	if e := config.Prepare(); e != nil {
+		return nil, e
+	}
 	bc := &BlockChain{
 		c:     config,
 		chain: chainDB,
@@ -132,7 +135,7 @@ func (bc *BlockChain) GetTxOfSeq(seq uint64) (Transaction, error) {
 	return bc.chain.GetTxOfSeq(seq)
 }
 
-func (bc *BlockChain) GetKittyAddress(kittyID uint64) (cipher.Address, error) {
+func (bc *BlockChain) GetKittyAddress(kittyID KittyID) (cipher.Address, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
@@ -141,7 +144,7 @@ func (bc *BlockChain) GetKittyAddress(kittyID uint64) (cipher.Address, error) {
 
 type AddressInfo struct {
 	Address cipher.Address
-	Kitties []uint64
+	Kitties []KittyID
 }
 
 func (bc *BlockChain) GetAddressInfo(address cipher.Address) *AddressInfo {

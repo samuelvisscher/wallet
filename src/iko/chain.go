@@ -1,4 +1,4 @@
-package kchain
+package iko
 
 import (
 	"errors"

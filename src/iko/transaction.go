@@ -1,4 +1,4 @@
-package kchain
+package iko
 
 import (
 	"errors"
@@ -16,13 +16,13 @@ type Transaction struct {
 	Seq  uint64 // Each transaction has a sequence.
 	TS   int64  // Timestamp.
 
-	KittyID uint64
+	KittyID KittyID
 	From    cipher.Address
 	To      cipher.Address
 	Sig     cipher.Sig
 }
 
-func NewGenTx(prev *Transaction, kittyID uint64, sk cipher.SecKey) *Transaction {
+func NewGenTx(prev *Transaction, kittyID KittyID, sk cipher.SecKey) *Transaction {
 	var (
 		address = cipher.AddressFromSecKey(sk)
 		ts      = time.Now().UnixNano()
@@ -51,7 +51,7 @@ func NewGenTx(prev *Transaction, kittyID uint64, sk cipher.SecKey) *Transaction 
 	return tx
 }
 
-func NewTransferTx(prev *Transaction, kittyID uint64, to cipher.Address, sk cipher.SecKey) *Transaction {
+func NewTransferTx(prev *Transaction, kittyID KittyID, to cipher.Address, sk cipher.SecKey) *Transaction {
 	tx := &Transaction{
 		Prev:    prev.Hash(),
 		Seq:     prev.Seq + 1,
