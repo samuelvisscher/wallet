@@ -17,19 +17,19 @@ type Gateway struct {
 func (g *Gateway) host(mux *http.ServeMux) error {
 
 	type KittyReply struct {
-		KittyID      uint64   `json:"kitty_id"`
-		Address      string   `json:"address"`
-		Transactions []string `json:"transactions"`
+		KittyID      iko.KittyID `json:"kitty_id"`
+		Address      string      `json:"address"`
+		Transactions []string    `json:"transactions"`
 	}
 
 	mux.HandleFunc("/api/kitty/",
 		func(w http.ResponseWriter, r *http.Request) {
-			kittyID, e := strconv.ParseUint(path.Base(r.URL.EscapedPath()), 10, 64)
+			kittyID, e := iko.KittyIDFromString(path.Base(r.URL.EscapedPath()))
 			if e != nil {
 				sendErr(w, e)
 				return
 			}
-			address, e := g.IKO.GetKittyAddress(kittyID)
+			address, e := g.IKO.GetKittyAddress(iko.KittyID(kittyID))
 			if e != nil {
 				sendErr(w, e)
 				return
@@ -47,13 +47,13 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 	}
 
 	type Tx struct {
-		PrevHash string `json:"prev_hash"`
-		Seq      uint64 `json:"seq"`
-		TS       int64  `json:"time"`
-		KittyID  uint64 `json:"kitty_id"`
-		From     string `json:"from"`
-		To       string `json:"to"`
-		Sig      string `json:"sig"`
+		PrevHash string      `json:"prev_hash"`
+		Seq      uint64      `json:"seq"`
+		TS       int64       `json:"time"`
+		KittyID  iko.KittyID `json:"kitty_id"`
+		From     string      `json:"from"`
+		To       string      `json:"to"`
+		Sig      string      `json:"sig"`
 	}
 
 	type TxReply struct {
@@ -120,9 +120,9 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 		})
 
 	type AddressReply struct {
-		Address      string   `json:"address"`
-		Kitties      []uint64 `json:"kitties"`
-		Transactions []string `json:"transactions"`
+		Address      string       `json:"address"`
+		Kitties      iko.KittyIDs `json:"kitties"`
+		Transactions []string     `json:"transactions"`
 	}
 
 	mux.HandleFunc("/api/address/",

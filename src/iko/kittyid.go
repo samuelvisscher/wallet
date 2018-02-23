@@ -1,8 +1,16 @@
 package iko
 
-import "sort"
+import (
+	"sort"
+	"strconv"
+)
 
 type KittyID uint64
+
+func KittyIDFromString(idStr string) (KittyID, error) {
+	id, e := strconv.ParseUint(idStr, 10, 64)
+	return KittyID(id), e
+}
 
 type KittyIDs []KittyID
 
