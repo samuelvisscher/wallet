@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/kittycash/iko/src/http"
-	"github.com/kittycash/iko/src/kchain"
+	"github.com/kittycash/wallet/src/http"
+	"github.com/kittycash/wallet/src/iko"
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/sirupsen/logrus.v1"
 	"gopkg.in/urfave/cli.v1"
@@ -72,29 +72,29 @@ func action(ctx *cli.Context) error {
 	)
 
 	var (
-		chainDB kchain.ChainDB
-		stateDB kchain.StateDB
+		chainDB iko.ChainDB
+		stateDB iko.StateDB
 	)
 
 	// Prepare ChainDB.
 	switch {
 	case memoryMode:
-		chainDB = kchain.NewMemoryChain(10)
+		chainDB = iko.NewMemoryChain(10)
 	}
 
 	// Prepare StateDB.
-	stateDB = kchain.NewMemoryState()
+	stateDB = iko.NewMemoryState()
 
 	// Prepare blockchain config.
-	bcConfig := &kchain.BlockChainConfig{
+	bcConfig := &iko.BlockChainConfig{
 		CreatorPK: masterPK,
-		TxAction: func(tx *kchain.Transaction) error {
+		TxAction: func(tx *iko.Transaction) error {
 			return nil
 		},
 	}
 
 	// Prepare blockchain.
-	bc, e := kchain.NewBlockChain(bcConfig, chainDB, stateDB)
+	bc, e := iko.NewBlockChain(bcConfig, chainDB, stateDB)
 	if e != nil {
 		return e
 	}
@@ -102,9 +102,9 @@ func action(ctx *cli.Context) error {
 
 	// Prepare test data.
 	if testMode {
-		var tx *kchain.Transaction
+		var tx *iko.Transaction
 		for i := 0; i < testCount; i++ {
-			tx = kchain.NewGenTx(tx, uint64(i), testSK)
+			tx = iko.NewGenTx(tx, iko.KittyID(i), testSK)
 
 			log.WithField("tx", tx.String()).
 				Debugf("test:tx_inject(%d)", i)
@@ -122,7 +122,7 @@ func action(ctx *cli.Context) error {
 			EnableTLS: false,
 		},
 		&http.Gateway{
-			BlockChain: bc,
+			IKO: bc,
 		},
 	)
 	if e != nil {

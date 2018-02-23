@@ -3,7 +3,7 @@ package http
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/kittycash/iko/src/kchain"
+	"github.com/kittycash/wallet/src/iko"
 	"github.com/skycoin/skycoin/src/cipher"
 	"net/http"
 	"path"
@@ -11,7 +11,7 @@ import (
 )
 
 type Gateway struct {
-	BlockChain *kchain.BlockChain
+	IKO *iko.BlockChain
 }
 
 func (g *Gateway) host(mux *http.ServeMux) error {
@@ -29,7 +29,7 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 				sendErr(w, e)
 				return
 			}
-			address, e := g.BlockChain.GetKittyAddress(kittyID)
+			address, e := g.IKO.GetKittyAddress(kittyID)
 			if e != nil {
 				sendErr(w, e)
 				return
@@ -68,7 +68,7 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 				sendErr(w, e)
 				return
 			}
-			tx, e := g.BlockChain.GetTxOfHash(txHash)
+			tx, e := g.IKO.GetTxOfHash(txHash)
 			if e != nil {
 				sendErr(w, e)
 				return
@@ -97,7 +97,7 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 				sendErr(w, e)
 				return
 			}
-			tx, e := g.BlockChain.GetTxOfSeq(seq)
+			tx, e := g.IKO.GetTxOfSeq(seq)
 			if e != nil {
 				sendErr(w, e)
 				return
@@ -132,7 +132,7 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 				sendErr(w, e)
 				return
 			}
-			info := g.BlockChain.GetAddressInfo(address)
+			info := g.IKO.GetAddressInfo(address)
 			sendOK(w, AddressReply{
 				Address:      address.String(),
 				Kitties:      info.Kitties,
@@ -151,15 +151,6 @@ type Response struct {
 	Data  interface{} `json:"data,omitempty"`
 	Error *Error      `json:"error,omitempty"`
 }
-
-//func send(w http.ResponseWriter) func(v interface{}, e error) error {
-//	return func(v interface{}, e error) error {
-//		if e != nil {
-//			return sendErr(w, e)
-//		}
-//		return sendOK(w, v)
-//	}
-//}
 
 func sendOK(w http.ResponseWriter, v interface{}) error {
 	response := Response{Data: v}
