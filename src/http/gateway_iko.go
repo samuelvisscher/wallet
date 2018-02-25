@@ -18,7 +18,7 @@ func ikoGateway(mux *http.ServeMux, g *iko.BlockChain) error {
 	mux.HandleFunc("/api/iko/tx_seq/", Do(getTxOfSeq(g)))
 	mux.HandleFunc("/api/iko/address/", Do(getAddress(g)))
 
-	mux.HandleFunc("/api/iko/head_hash", Do(getHeadHash(g)))
+	mux.HandleFunc("/api/iko/head_tx", Do(getHeadTx(g)))
 	mux.HandleFunc("/api/iko/inject_tx", Do(injectTx(g)))
 	return nil
 }
@@ -161,7 +161,7 @@ type HeadHashReply struct {
 	Hash string `json:"hash"`
 }
 
-func getHeadHash(g *iko.BlockChain) httpAction {
+func getHeadTx(g *iko.BlockChain) httpAction {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		if r.Method != "GET" {
 			return send405(w, r.Method, "GET")
@@ -170,9 +170,20 @@ func getHeadHash(g *iko.BlockChain) httpAction {
 		if e != nil {
 			return send404(w, e)
 		}
-		return send200(w, HeadHashReply{
-			Seq: tx.Seq,
-			Hash: tx.Hash().Hex(),
+		return send200(w, TxReply{
+			Meta: TxMeta{
+				Hash: tx.Hash().Hex(),
+				Raw:  hex.EncodeToString(tx.Serialize()),
+			},
+			Tx: Tx{
+				PrevHash: tx.Prev.Hex(),
+				Seq:      tx.Seq,
+				TS:       tx.TS,
+				KittyID:  tx.KittyID,
+				From:     tx.From.String(),
+				To:       tx.To.String(),
+				Sig:      tx.Sig.Hex(),
+			},
 		})
 	}
 }
