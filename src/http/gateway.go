@@ -16,7 +16,6 @@ type Gateway struct {
 func (g *Gateway) host(mux *http.ServeMux) error {
 
 	if g.IKO != nil {
-		fmt.Println("LOADED")
 		if e := ikoGateway(mux, g.IKO); e != nil {
 			return e
 		}

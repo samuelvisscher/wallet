@@ -1,8 +1,8 @@
-# Initial Kitty Offering Node
+# Kittycash Wallet
 
-Kitties for sale.
+Where one claims ownership of dem' kitties.
 
-## Run (test mode)
+## Run IKO node (test mode)
 
 Run a node with test data. 100 kitties.
 
@@ -12,7 +12,7 @@ iko \
     -memory \
     -test-mode \
     -test-secret-key 190030fed87872ff67015974d4c1432910724d0c0d4bfbd29d3b593dba936155 \
-    -test-injection-count 100
+    -test-injection-count 10
 ```
 
 RESTful API will be served on port `:8080`.
@@ -22,7 +22,7 @@ RESTful API will be served on port `:8080`.
 Request:
 
 ```text
-GET http://127.0.0.1:8080/api/kitty/9
+GET http://127.0.0.1:8080/api/iko/kitty/9
 ```
 
 Response:
@@ -33,7 +33,7 @@ Response:
         "kitty_id": 9,
         "address": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
         "transactions": [
-            "TO_BE_IMPLEMENTED"
+            "bf04e7d9a39a94acb2b60810d77ebafea566b3ee065b109238e2b9765673c40b"
         ]
     }
 }
@@ -44,7 +44,7 @@ Response:
 Request:
 
 ```text
-GET http://127.0.0.1:8080/api/tx/b4380dc5125320efb24abebda81e0522cec35bca95cf1e9b4e8b4d6a4fda1634
+GET http://127.0.0.1:8080/api/iko/tx/f6f70fbd908a2cdbbd948f2e30317970f76c1ef32ccded970062290cbb455190
 ```
 
 Response:
@@ -53,17 +53,17 @@ Response:
 {
     "data": {
         "meta": {
-            "hash": "b4380dc5125320efb24abebda81e0522cec35bca95cf1e9b4e8b4d6a4fda1634",
-            "raw": "690f7c314facfc570bdae9888c91527a50f6d21129a23498d29bce8f51e9309008000000000000006e2d890c4b9d15150800000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac413978272832fc2618823f9d2d4427ce439ca0cccce05796a1ca4b5dfe0f1636bd0e3be5844295390909abd6dd1b6056ad36281bff2e819874455818fb8902244fa21637101"
+            "hash": "f6f70fbd908a2cdbbd948f2e30317970f76c1ef32ccded970062290cbb455190",
+            "raw": "a6ebfd0fcf5f4772c446b2c4021928ba314d0a486a62480b3cd461b8b16c13440800000000000000c0bc46a6927516150800000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac4139782729d476717ae39c118e13fc2e44f9225a6bbbbcb6780d4460348b634fa89a21ebc5e23eb56246e33368df802aa2b0e89fdc4a7752a51307c04225c80952a9b087801"
         },
         "transaction": {
-            "prev_hash": "690f7c314facfc570bdae9888c91527a50f6d21129a23498d29bce8f51e93090",
+            "prev_hash": "a6ebfd0fcf5f4772c446b2c4021928ba314d0a486a62480b3cd461b8b16c1344",
             "seq": 8,
-            "time": 1519293394965835118,
+            "time": 1519531196999449792,
             "kitty_id": 8,
             "from": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
             "to": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
-            "sig": "832fc2618823f9d2d4427ce439ca0cccce05796a1ca4b5dfe0f1636bd0e3be5844295390909abd6dd1b6056ad36281bff2e819874455818fb8902244fa21637101"
+            "sig": "9d476717ae39c118e13fc2e44f9225a6bbbbcb6780d4460348b634fa89a21ebc5e23eb56246e33368df802aa2b0e89fdc4a7752a51307c04225c80952a9b087801"
         }
     }
 }
@@ -74,7 +74,7 @@ Response:
 Request:
 
 ```text
-GET http://127.0.0.1:8080/api/tx_seq/7
+GET http://127.0.0.1:8080/api/iko/tx_seq/7
 ```
 
 Response:
@@ -104,7 +104,7 @@ Response:
 Request:
 
 ```text
-GET http://127.0.0.1:8080/api/address/2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7
+GET http://127.0.0.1:8080/api/iko/address/2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7
 ```
 
 Response:
@@ -114,109 +114,28 @@ Response:
     "data": {
         "address": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
         "kitties": [
-            7,
-            18,
-            29,
-            42,
+            0,
+            1,
             2,
             3,
-            35,
-            48,
-            76,
-            91,
-            0,
-            31,
-            72,
-            83,
-            93,
-            94,
-            28,
-            44,
-            24,
-            27,
-            80,
-            86,
-            92,
-            98,
-            21,
-            23,
-            15,
-            41,
-            51,
-            57,
-            63,
-            66,
             4,
-            6,
-            81,
-            68,
-            73,
-            58,
-            97,
-            1,
-            52,
-            61,
-            70,
-            71,
-            79,
-            90,
-            10,
-            46,
-            38,
-            40,
-            53,
-            62,
-            78,
-            82,
-            11,
-            19,
-            85,
-            88,
-            39,
-            54,
-            59,
-            67,
-            74,
-            77,
-            13,
-            36,
-            95,
-            55,
-            87,
-            8,
-            34,
-            60,
-            65,
-            89,
-            33,
-            50,
-            25,
-            69,
-            75,
-            84,
-            17,
-            20,
-            43,
-            47,
-            56,
-            9,
-            37,
-            26,
-            49,
-            12,
-            16,
-            64,
-            30,
-            32,
-            22,
-            45,
-            96,
-            99,
             5,
-            14
+            6,
+            7,
+            8,
+            9
         ],
         "transactions": [
-            "TO_BE_IMPLEMENTED"
+            "9d30e6cd189dc3faf4afde0d48fa0d90d062f9cef211ccf9ce2e4fd01520cf18",
+            "ab4f013da9fdc5a890330fb1ae89f2d884ab3cee3af21510865a4b8afd923bff",
+            "de557e38f393545843e6a7213fdbd86e89d52b4ab45589fdd7120f993751bcee",
+            "f521f44e0e959ef3c799da9d05ab3bd15a930b2354f0fd7a4267ebf243a6479f",
+            "a020ba08fe38205e69c8bfb78dc9e279dc6476b72109d85dc291903241af8793",
+            "13e8eb5d4d5448e345dc8e64a6ec971231b6617406ee16af65e08dcae8da7531",
+            "1d88a6c15e40b40d846fe00fae0bd893fd3fd1e42af023349190c262d364b871",
+            "a6ebfd0fcf5f4772c446b2c4021928ba314d0a486a62480b3cd461b8b16c1344",
+            "f6f70fbd908a2cdbbd948f2e30317970f76c1ef32ccded970062290cbb455190",
+            "bf04e7d9a39a94acb2b60810d77ebafea566b3ee065b109238e2b9765673c40b"
         ]
     }
 }

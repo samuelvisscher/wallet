@@ -25,7 +25,6 @@ type KittyReply struct {
 }
 
 func getKitty(g *iko.BlockChain) http.HandlerFunc {
-	fmt.Println("GETTING KITTY")
 	return Do(func(w http.ResponseWriter, r *http.Request) error {
 		kittyID, e := iko.KittyIDFromString(path.Base(r.URL.EscapedPath()))
 		if e != nil {
