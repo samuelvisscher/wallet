@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/kittycash/wallet/src/iko"
 	"net/http"
+	"path"
+	"strings"
 )
 
 type Gateway struct {
@@ -26,13 +28,37 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 	<<< ACTION >>>
 */
 
-type httpAction func(w http.ResponseWriter, r *http.Request) error
+type HandlerFunc func(w http.ResponseWriter, r *http.Request, p *Path) error
 
-func Do(action httpAction) http.HandlerFunc {
+func Do(base int, method string, action HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if e := action(w, r); e != nil {
+
+		if r.Method != method {
+			sendJson(w, http.StatusBadRequest,
+				fmt.Sprintf("invalid method type of '%s', expected '%s'",
+					r.Method, method))
+
+		} else if e := action(w, r, NewPath(r, base)); e != nil {
 			fmt.Println(e)
 		}
+	}
+}
+
+func MultiHandle(mux *http.ServeMux, handler http.HandlerFunc, patterns []string) {
+	for _, pattern := range patterns {
+		mux.HandleFunc(pattern, handler)
+	}
+}
+
+func SwitchExtension(w http.ResponseWriter, p *Path, jsonAction, binAction func() error) error {
+	switch p.Extension {
+	case "", ".json":
+		return jsonAction()
+	case ".bin":
+		return binAction()
+	default:
+		return sendJson(w, http.StatusMethodNotAllowed,
+			fmt.Sprintf("invalid URL extension '%s'", p.Extension))
 	}
 }
 
@@ -40,64 +66,56 @@ func Do(action httpAction) http.HandlerFunc {
 	<<< RETURN SPECIFICATIONS >>>
 */
 
-type Error struct {
-	Msg string `json:"message"`
-}
-
-type Response struct {
-	Data  interface{} `json:"data,omitempty"`
-	Error *Error      `json:"error,omitempty"`
-}
-
-// send200 - OK.
-func send200(w http.ResponseWriter, v interface{}) error {
-	response := Response{Data: v}
-	return sendWithStatus(w, response, http.StatusOK)
-}
-
-// send400 bad request.
-func send400(w http.ResponseWriter, e error) error {
-	return sendErrWithStatus(w, e, http.StatusBadRequest)
-}
-
-// send404 not found.
-func send404(w http.ResponseWriter, e error) error {
-	return sendErrWithStatus(w, e, http.StatusNotFound)
-}
-
-// send405 method not allowed.
-func send405(w http.ResponseWriter, got, exp string) error {
-	e := fmt.Errorf("got method '%s' while expecting '%s'", got, exp)
-	return sendErrWithStatus(w, e, http.StatusNotFound)
-}
-
-func sendErrWithStatus(w http.ResponseWriter, e error, status int) error {
-	response := Response{
-		Error: &Error{
-			Msg: e.Error(),
-		},
-	}
-	return sendWithStatus(w, response, status)
-}
-
-func sendWithStatus(w http.ResponseWriter, v interface{}, status int) error {
+func sendJson(w http.ResponseWriter, status int, v interface{}) error {
 	data, e := json.Marshal(v)
 	if e != nil {
 		return e
 	}
-	sendRaw(w, data, status)
-	return nil
-}
-
-func sendRaw(w http.ResponseWriter, data []byte, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(data)
+	_, e = w.Write(data)
+	return e
 }
 
-func sendBin(w http.ResponseWriter, data []byte, status int) error {
+func sendBin(w http.ResponseWriter, status int, data []byte) error {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.WriteHeader(status)
-	w.Write(data)
-	return nil
+	_, e := w.Write(data)
+	return e
+}
+
+/*
+	<<< URL Handler >>>
+*/
+
+type Path struct {
+	EscapedPath string
+	SplitPath   []string
+	Extension   string
+	Base        string
+	BasePos     int
+}
+
+func NewPath(r *http.Request, basePos int) *Path {
+	var (
+		escPath   = r.URL.EscapedPath()
+		splitPath = strings.Split(escPath, "/")
+		baseAll   = splitPath[basePos]
+		ext       = path.Ext(baseAll)
+		base      = strings.TrimSuffix(baseAll, ext)
+	)
+	return &Path{
+		EscapedPath: escPath,
+		SplitPath:   splitPath,
+		Extension:   ext,
+		Base:        base,
+		BasePos:     basePos,
+	}
+}
+
+func (p *Path) Segment(i int) string {
+	if i < 0 || i >= len(p.SplitPath) {
+		return ""
+	}
+	return p.SplitPath[i]
 }

@@ -2,6 +2,7 @@ package iko
 
 import (
 	"github.com/skycoin/skycoin/src/cipher"
+	"github.com/skycoin/skycoin/src/cipher/encoder"
 	"sort"
 	"strconv"
 )
@@ -40,6 +41,10 @@ type KittyState struct {
 	Transactions TxHashes
 }
 
+func (s KittyState) Serialize() []byte {
+	return encoder.Serialize(s)
+}
+
 type AddressState struct {
 	Kitties      KittyIDs
 	Transactions TxHashes
@@ -50,4 +55,8 @@ func NewAddressState() *AddressState {
 		Kitties:      make(KittyIDs, 0),
 		Transactions: make(TxHashes, 0),
 	}
+}
+
+func (a AddressState) Serialize() []byte {
+	return encoder.Serialize(a)
 }
