@@ -30,32 +30,32 @@ func (g *Gateway) host(mux *http.ServeMux) error {
 
 type HandlerFunc func(w http.ResponseWriter, r *http.Request, p *Path) error
 
-func Do(base int, method string, action HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Handle(mux *http.ServeMux, pattern, method string, handler HandlerFunc) {
+	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != method {
 			sendJson(w, http.StatusBadRequest,
 				fmt.Sprintf("invalid method type of '%s', expected '%s'",
 					r.Method, method))
 
-		} else if e := action(w, r, NewPath(r, base)); e != nil {
+		} else if e := handler(w, r, NewPath(r)); e != nil {
 			fmt.Println(e)
 		}
-	}
+	})
 }
 
-func MultiHandle(mux *http.ServeMux, handler http.HandlerFunc, patterns []string) {
+func MultiHandle(mux *http.ServeMux, patterns []string, method string, handler HandlerFunc) {
 	for _, pattern := range patterns {
-		mux.HandleFunc(pattern, handler)
+		Handle(mux, pattern, method, handler)
 	}
 }
 
-func SwitchExtension(w http.ResponseWriter, p *Path, jsonAction, binAction func() error) error {
+func SwitchExtension(w http.ResponseWriter, p *Path, jsonAction, encAction func() error) error {
 	switch p.Extension {
 	case "", ".json":
 		return jsonAction()
-	case ".bin":
-		return binAction()
+	case ".enc" ,".bin":
+		return encAction()
 	default:
 		return sendJson(w, http.StatusMethodNotAllowed,
 			fmt.Sprintf("invalid URL extension '%s'", p.Extension))
@@ -93,14 +93,13 @@ type Path struct {
 	SplitPath   []string
 	Extension   string
 	Base        string
-	BasePos     int
 }
 
-func NewPath(r *http.Request, basePos int) *Path {
+func NewPath(r *http.Request) *Path {
 	var (
 		escPath   = r.URL.EscapedPath()
 		splitPath = strings.Split(escPath, "/")
-		baseAll   = splitPath[basePos]
+		baseAll   = splitPath[len(splitPath)-1]
 		ext       = path.Ext(baseAll)
 		base      = strings.TrimSuffix(baseAll, ext)
 	)
@@ -109,7 +108,6 @@ func NewPath(r *http.Request, basePos int) *Path {
 		SplitPath:   splitPath,
 		Extension:   ext,
 		Base:        base,
-		BasePos:     basePos,
 	}
 }
 

@@ -14,36 +14,23 @@ import (
 
 func ikoGateway(mux *http.ServeMux, g *iko.BlockChain) error {
 
-	MultiHandle(mux, Do(3, "GET", getKitty(g)),
-		[]string{
-			"/api/iko/kitty/",
-			"/api/iko/kitty.json/",
-			"/api/iko/kitty.bin/",
-		})
-	MultiHandle(mux, Do(3, "GET", getAddress(g)),
-		[]string{
-			"/api/iko/address/",
-			"/api/iko/address.json/",
-			"/api/iko/address.bin/",
-		})
-	MultiHandle(mux, Do(3, "GET", getTx(g)),
-		[]string{
-			"/api/iko/tx/",
-			"/api/iko/tx.json/",
-			"/api/iko/tx.bin/",
-		})
-	MultiHandle(mux, Do(3, "GET", getHeadTx(g)),
-		[]string{
-			"/api/iko/head_tx",
-			"/api/iko/head_tx.json",
-			"/api/iko/head_tx.bin",
-		})
-	MultiHandle(mux, Do(3, "GET", getHeadTx(g)),
-		[]string{
-			"/api/iko/inject_tx",
-			"/api/iko/inject_tx.json",
-			"/api/iko/inject_tx.bin",
-		})
+	Handle(mux, "/api/iko/kitty/",
+		"GET", getKitty(g))
+
+	Handle(mux, "/api/iko/address/",
+		"GET", getAddress(g))
+
+	Handle(mux, "/api/iko/tx/",
+		"GET", getTx(g))
+
+	MultiHandle(mux, []string{
+		"/api/iko/head_tx",
+		"/api/iko/head_tx.json",
+		"/api/iko/head_tx.enc",
+	}, "GET", getHeadTx(g))
+
+	Handle(mux, "/api/iko/inject_tx",
+		"POST", injectTx(g))
 
 	return nil
 }
@@ -56,7 +43,7 @@ type KittyReply struct {
 
 func getKitty(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		kittyID, e := iko.KittyIDFromString(p.Segment(p.BasePos+1))
+		kittyID, e := iko.KittyIDFromString(p.Base)
 		if e != nil {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
@@ -91,7 +78,7 @@ type AddressReply struct {
 
 func getAddress(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		address, e := cipher.DecodeBase58Address(p.Segment(p.BasePos + 1))
+		address, e := cipher.DecodeBase58Address(p.Base)
 		if e != nil {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
@@ -139,7 +126,7 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 		var tx iko.Transaction
 		switch reqVal := r.URL.Query().Get("request"); reqVal {
 		case "", "hash":
-			txHash, e := cipher.SHA256FromHex(p.Segment(p.BasePos + 1))
+			txHash, e := cipher.SHA256FromHex(p.Base)
 			if e != nil {
 				return sendJson(w, http.StatusBadRequest,
 					e.Error())
@@ -149,7 +136,7 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 					e.Error())
 			}
 		case "seq", "sequence":
-			seq, e := strconv.ParseUint(p.Segment(p.BasePos+1), 10, 64)
+			seq, e := strconv.ParseUint(p.Base, 10, 64)
 			if e != nil {
 				return sendJson(w, http.StatusBadRequest,
 					e.Error())
@@ -239,43 +226,38 @@ func injectTx(g *iko.BlockChain) HandlerFunc {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
 		}
-		return SwitchExtension(w, p,
-			func() error {
-				req := new(InjectTxRequest)
-				if e := json.Unmarshal(txRaw, req); e != nil {
-					return sendJson(w, http.StatusBadRequest,
-						e.Error())
-				}
-				hexRaw, e := hex.DecodeString(req.Hex)
-				if e != nil {
-					return sendJson(w, http.StatusBadRequest,
-						e.Error())
-				}
-				tx := new(iko.Transaction)
-				if e := encoder.DeserializeRaw(hexRaw, tx); e != nil {
-					return sendJson(w, http.StatusBadRequest,
-						e.Error())
-				}
-				if e := g.InjectTx(tx); e != nil {
-					return sendJson(w, http.StatusBadRequest,
-						e.Error())
-				}
-				return sendJson(w, http.StatusOK,
-					true)
-			},
-			func() error {
-				tx := new(iko.Transaction)
-				if e := encoder.DeserializeRaw(txRaw, tx); e != nil {
-					return sendJson(w, http.StatusBadRequest,
-						e.Error())
-				}
-				if e := g.InjectTx(tx); e != nil {
-					return sendJson(w, http.StatusBadRequest,
-						e.Error())
-				}
-				return sendJson(w, http.StatusOK,
-					true)
-			},
-		)
+		var tx = new(iko.Transaction)
+		switch contentType := r.Header.Get("Content-Type"); contentType {
+		case "application/json":
+			req := new(InjectTxRequest)
+			if e := json.Unmarshal(txRaw, req); e != nil {
+				return sendJson(w, http.StatusBadRequest,
+					e.Error())
+			}
+			hexRaw, e := hex.DecodeString(req.Hex)
+			if e != nil {
+				return sendJson(w, http.StatusBadRequest,
+					e.Error())
+			}
+			if e := encoder.DeserializeRaw(hexRaw, tx); e != nil {
+				return sendJson(w, http.StatusBadRequest,
+					e.Error())
+			}
+		case "application/octet-stream":
+			if e := encoder.DeserializeRaw(txRaw, tx); e != nil {
+				return sendJson(w, http.StatusBadRequest,
+					e.Error())
+			}
+		default:
+			return sendJson(w, http.StatusBadRequest,
+				fmt.Sprintf("content type '%s' is not supported, expecting '%s'",
+				contentType, []string{"application/json", "application/octet-stream"}))
+		}
+		if e := g.InjectTx(tx); e != nil {
+			return sendJson(w, http.StatusBadRequest,
+				e.Error())
+		}
+		return sendJson(w, http.StatusOK,
+			true)
 	}
 }
