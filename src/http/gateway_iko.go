@@ -56,7 +56,7 @@ type KittyReply struct {
 
 func getKitty(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		kittyID, e := iko.KittyIDFromString(p.Base)
+		kittyID, e := iko.KittyIDFromString(p.Segment(p.BasePos+1))
 		if e != nil {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
@@ -148,7 +148,7 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 				return sendJson(w, http.StatusNotFound,
 					e.Error())
 			}
-		case "seq":
+		case "seq", "sequence":
 			seq, e := strconv.ParseUint(p.Segment(p.BasePos+1), 10, 64)
 			if e != nil {
 				return sendJson(w, http.StatusBadRequest,
