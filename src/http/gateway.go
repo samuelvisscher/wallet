@@ -7,8 +7,6 @@ import (
 	"net/http"
 )
 
-
-
 type Gateway struct {
 	IKO *iko.BlockChain
 }
@@ -51,10 +49,15 @@ type Response struct {
 	Error *Error      `json:"error,omitempty"`
 }
 
-// send300 - OK.
+// send200 - OK.
 func send200(w http.ResponseWriter, v interface{}) error {
 	response := Response{Data: v}
 	return sendWithStatus(w, response, http.StatusOK)
+}
+
+// send400 bad request.
+func send400(w http.ResponseWriter, e error) error {
+	return sendErrWithStatus(w, e, http.StatusBadRequest)
 }
 
 // send404 not found.
@@ -62,9 +65,10 @@ func send404(w http.ResponseWriter, e error) error {
 	return sendErrWithStatus(w, e, http.StatusNotFound)
 }
 
-// send400 bad request.
-func send400(w http.ResponseWriter, e error) error {
-	return sendErrWithStatus(w, e, http.StatusBadRequest)
+// send405 method not allowed.
+func send405(w http.ResponseWriter, got, exp string) error {
+	e := fmt.Errorf("got method '%s' while expecting '%s'", got, exp)
+	return sendErrWithStatus(w, e, http.StatusNotFound)
 }
 
 func sendErrWithStatus(w http.ResponseWriter, e error, status int) error {

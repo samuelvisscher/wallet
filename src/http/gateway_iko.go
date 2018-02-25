@@ -8,13 +8,18 @@ import (
 	"net/http"
 	"path"
 	"strconv"
+	"github.com/skycoin/skycoin/src/cipher/encoder"
+	"io/ioutil"
 )
 
 func ikoGateway(mux *http.ServeMux, g *iko.BlockChain) error {
-	mux.HandleFunc("/api/iko/kitty/", getKitty(g))
-	mux.HandleFunc("/api/iko/tx/", getTx(g))
-	mux.HandleFunc("/api/iko/tx_seq/", getTxOfSeq(g))
-	mux.HandleFunc("/api/iko/address/", getAddress(g))
+	mux.HandleFunc("/api/iko/kitty/", Do(getKitty(g)))
+	mux.HandleFunc("/api/iko/tx/", Do(getTx(g)))
+	mux.HandleFunc("/api/iko/tx_seq/", Do(getTxOfSeq(g)))
+	mux.HandleFunc("/api/iko/address/", Do(getAddress(g)))
+
+	mux.HandleFunc("/api/iko/head_hash", Do(getHeadHash(g)))
+	mux.HandleFunc("/api/iko/inject_tx", Do(injectTx(g)))
 	return nil
 }
 
@@ -24,8 +29,11 @@ type KittyReply struct {
 	Transactions []string    `json:"transactions"`
 }
 
-func getKitty(g *iko.BlockChain) http.HandlerFunc {
-	return Do(func(w http.ResponseWriter, r *http.Request) error {
+func getKitty(g *iko.BlockChain) httpAction {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if r.Method != "GET" {
+			return send405(w, r.Method, "GET")
+		}
 		kittyID, e := iko.KittyIDFromString(path.Base(r.URL.EscapedPath()))
 		if e != nil {
 			return send400(w, e)
@@ -39,7 +47,7 @@ func getKitty(g *iko.BlockChain) http.HandlerFunc {
 			Address:      kState.Address.String(),
 			Transactions: kState.Transactions.ToStringArray(),
 		})
-	})
+	}
 }
 
 type TxMeta struct {
@@ -62,8 +70,11 @@ type TxReply struct {
 	Tx   Tx     `json:"transaction"`
 }
 
-func getTx(g *iko.BlockChain) http.HandlerFunc {
-	return Do(func(w http.ResponseWriter, r *http.Request) error {
+func getTx(g *iko.BlockChain) httpAction {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if r.Method != "GET" {
+			return send405(w, r.Method, "GET")
+		}
 		txHash, e := cipher.SHA256FromHex(path.Base(r.URL.EscapedPath()))
 		if e != nil {
 			return send400(w, e)
@@ -87,11 +98,14 @@ func getTx(g *iko.BlockChain) http.HandlerFunc {
 				Sig:      tx.Sig.Hex(),
 			},
 		})
-	})
+	}
 }
 
-func getTxOfSeq(g *iko.BlockChain) http.HandlerFunc {
-	return Do(func(w http.ResponseWriter, r *http.Request) error {
+func getTxOfSeq(g *iko.BlockChain) httpAction {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if r.Method != "GET" {
+			return send405(w, r.Method, "GET")
+		}
 		seq, e := strconv.ParseUint(path.Base(r.URL.EscapedPath()), 10, 64)
 		if e != nil {
 			return send400(w, e)
@@ -115,7 +129,7 @@ func getTxOfSeq(g *iko.BlockChain) http.HandlerFunc {
 				Sig:      tx.Sig.Hex(),
 			},
 		})
-	})
+	}
 }
 
 type AddressReply struct {
@@ -124,8 +138,11 @@ type AddressReply struct {
 	Transactions []string     `json:"transactions"`
 }
 
-func getAddress(g *iko.BlockChain) http.HandlerFunc {
-	return Do(func(w http.ResponseWriter, r *http.Request) error {
+func getAddress(g *iko.BlockChain) httpAction {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if r.Method != "GET" {
+			return send405(w, r.Method, "GET")
+		}
 		address, e := cipher.DecodeBase58Address(path.Base(r.URL.EscapedPath()))
 		if e != nil {
 			return send400(w, e)
@@ -136,5 +153,46 @@ func getAddress(g *iko.BlockChain) http.HandlerFunc {
 			Kitties:      aState.Kitties,
 			Transactions: aState.Transactions.ToStringArray(),
 		})
-	})
+	}
+}
+
+type HeadHashReply struct {
+	Seq  uint64 `json:"seq"`
+	Hash string `json:"hash"`
+}
+
+func getHeadHash(g *iko.BlockChain) httpAction {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if r.Method != "GET" {
+			return send405(w, r.Method, "GET")
+		}
+		tx, e := g.GetHeadTx()
+		if e != nil {
+			return send404(w, e)
+		}
+		return send200(w, HeadHashReply{
+			Seq: tx.Seq,
+			Hash: tx.Hash().Hex(),
+		})
+	}
+}
+
+func injectTx(g *iko.BlockChain) httpAction {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if r.Method != "POST" {
+			return send405(w, r.Method, "POST")
+		}
+		txRaw, e := ioutil.ReadAll(r.Body)
+		if e != nil {
+			return send400(w, e)
+		}
+		tx := new(iko.Transaction)
+		if e := encoder.DeserializeRaw(txRaw, tx); e != nil {
+			return send400(w, e)
+		}
+		if e := g.InjectTx(tx); e != nil {
+			return send400(w, e)
+		}
+		return send200(w, true)
+	}
 }
