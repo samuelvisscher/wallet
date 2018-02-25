@@ -1,8 +1,8 @@
-# Initial Kitty Offering Node
+# Kittycash Wallet
 
-Kitties for sale.
+Where one claims ownership of dem' kitties.
 
-## Run (test mode)
+## Run IKO node (test mode)
 
 Run a node with test data. 100 kitties.
 
@@ -12,212 +12,190 @@ iko \
     -memory \
     -test-mode \
     -test-secret-key 190030fed87872ff67015974d4c1432910724d0c0d4bfbd29d3b593dba936155 \
-    -test-injection-count 100
+    -test-injection-count 10
 ```
 
 RESTful API will be served on port `:8080`.
 
 **Get Kitty of ID:**
 
-Request:
+Request (for JSON reply):
 
 ```text
-GET http://127.0.0.1:8080/api/kitty/9
+GET http://127.0.0.1:8080/api/iko/kitty/9.json
 ```
 
 Response:
 
 ```json
 {
-    "data": {
-        "kitty_id": 9,
-        "address": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
-        "transactions": [
-            "TO_BE_IMPLEMENTED"
-        ]
-    }
+    "kitty_id": 9,
+    "address": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+    "transactions": [
+        "40c34bc724643d5b25beea3fdb3b1eeeff61b08b6ba90111126d2571f28aa33a"
+    ]
 }
 ```
 
-**Get Transaction of Hash:**
-
-Request:
+Request (for encoded reply):
 
 ```text
-GET http://127.0.0.1:8080/api/tx/b4380dc5125320efb24abebda81e0522cec35bca95cf1e9b4e8b4d6a4fda1634
-```
-
-Response:
-
-```json
-{
-    "data": {
-        "meta": {
-            "hash": "b4380dc5125320efb24abebda81e0522cec35bca95cf1e9b4e8b4d6a4fda1634",
-            "raw": "690f7c314facfc570bdae9888c91527a50f6d21129a23498d29bce8f51e9309008000000000000006e2d890c4b9d15150800000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac413978272832fc2618823f9d2d4427ce439ca0cccce05796a1ca4b5dfe0f1636bd0e3be5844295390909abd6dd1b6056ad36281bff2e819874455818fb8902244fa21637101"
-        },
-        "transaction": {
-            "prev_hash": "690f7c314facfc570bdae9888c91527a50f6d21129a23498d29bce8f51e93090",
-            "seq": 8,
-            "time": 1519293394965835118,
-            "kitty_id": 8,
-            "from": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
-            "to": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
-            "sig": "832fc2618823f9d2d4427ce439ca0cccce05796a1ca4b5dfe0f1636bd0e3be5844295390909abd6dd1b6056ad36281bff2e819874455818fb8902244fa21637101"
-        }
-    }
-}
-```
-
-**Get Transaction of Sequence:**
-
-Request:
-
-```text
-GET http://127.0.0.1:8080/api/tx_seq/7
-```
-
-Response:
-
-```json
-{
-    "data": {
-        "meta": {
-            "hash": "690f7c314facfc570bdae9888c91527a50f6d21129a23498d29bce8f51e93090",
-            "raw": "87901ffad3f378bdd75a5ba9e435c66468414ef4bcf76e4134ac208650283c8d07000000000000005c95640c4b9d15150700000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac4139782725ac63892ee8e25f0a6c27e6f065ae755c621d51bb0ac288f537d7bc362dd09a13e42a93b2fb48060c9ee01e4f187177bc8654e2ea10b970d84e10c40a4d62d6f01"
-        },
-        "transaction": {
-            "prev_hash": "87901ffad3f378bdd75a5ba9e435c66468414ef4bcf76e4134ac208650283c8d",
-            "seq": 7,
-            "time": 1519293394963436892,
-            "kitty_id": 7,
-            "from": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
-            "to": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
-            "sig": "5ac63892ee8e25f0a6c27e6f065ae755c621d51bb0ac288f537d7bc362dd09a13e42a93b2fb48060c9ee01e4f187177bc8654e2ea10b970d84e10c40a4d62d6f01"
-        }
-    }
-}
+GET http://127.0.0.1:8080/api/iko/kitty/9.enc
 ```
 
 **Get Address:**
 
-Request:
+Request (for JSON reply):
 
 ```text
-GET http://127.0.0.1:8080/api/address/2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7
+GET http://127.0.0.1:8080/api/iko/address/2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7.json
 ```
 
 Response:
 
 ```json
 {
-    "data": {
-        "address": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
-        "kitties": [
-            7,
-            18,
-            29,
-            42,
-            2,
-            3,
-            35,
-            48,
-            76,
-            91,
-            0,
-            31,
-            72,
-            83,
-            93,
-            94,
-            28,
-            44,
-            24,
-            27,
-            80,
-            86,
-            92,
-            98,
-            21,
-            23,
-            15,
-            41,
-            51,
-            57,
-            63,
-            66,
-            4,
-            6,
-            81,
-            68,
-            73,
-            58,
-            97,
-            1,
-            52,
-            61,
-            70,
-            71,
-            79,
-            90,
-            10,
-            46,
-            38,
-            40,
-            53,
-            62,
-            78,
-            82,
-            11,
-            19,
-            85,
-            88,
-            39,
-            54,
-            59,
-            67,
-            74,
-            77,
-            13,
-            36,
-            95,
-            55,
-            87,
-            8,
-            34,
-            60,
-            65,
-            89,
-            33,
-            50,
-            25,
-            69,
-            75,
-            84,
-            17,
-            20,
-            43,
-            47,
-            56,
-            9,
-            37,
-            26,
-            49,
-            12,
-            16,
-            64,
-            30,
-            32,
-            22,
-            45,
-            96,
-            99,
-            5,
-            14
-        ],
-        "transactions": [
-            "TO_BE_IMPLEMENTED"
-        ]
+    "address": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+    "kitties": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+    ],
+    "transactions": [
+        "cd7073ed8dc93c3e0d52ab3925887161ff3063e56a95a5503d56b4726b910080",
+        "87f006702875485c11bfbfc124915e11d3794a50c458d9a49bd7c2004b383914",
+        "c01a57201bc5d0a93d61bf3ca07d110402de8f7acbbff38f40038d501c8f6e45",
+        "11446e215bb4bcc39fecf238e850e61fdd491108feef5e9f4bcb7bdc21dc163b",
+        "98803f1872ad2bee2bc9e907788231ce0409ea234852dcf46e7f54f5fcd8cfb1",
+        "a39e5d3bb3b7da93c10aa29c5c71f8cf84a1ca7adc410c26c6e422aacf069af8",
+        "f1003dc6adadd98ab9dac25c836530c613d374862b6efbd16df93ca9aa65c03b",
+        "1f78bddf95fd20ec9fd44a0f5ac1795cfa65243dfb5adad9b406f6410cd8e855",
+        "c18e2c0421ec6f2b8ea06472d333cd499230a1e6599be960cfb5190d3cfb6d37",
+        "40c34bc724643d5b25beea3fdb3b1eeeff61b08b6ba90111126d2571f28aa33a"
+    ]
+}
+```
+
+Request (for encoded reply):
+
+```text
+GET http://127.0.0.1:8080/api/iko/address/2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7.enc
+```
+
+**Get Transaction of Hash:**
+
+Request (for JSON reply):
+
+```text
+GET http://127.0.0.1:8080/api/iko/tx/72e9b929f77d35cd556c4fe3d758d537b72537330790e186b842786da6d8f3cc.json?request=hash
+```
+
+Response:
+
+```json
+{
+    "meta": {
+        "hash": "72e9b929f77d35cd556c4fe3d758d537b72537330790e186b842786da6d8f3cc",
+        "raw": "3815752563947ba5342fefa059479d476a2586a5544574bd9605c0135bbc483208000000000000004fd8ed48b29c16150800000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac413978272408980e7c3671fcd3fc7c6258d3de8b4ad477323456850080ff603578f72f99000f712a195bd77393de32be08125436a9d02553448b2e3d3b43dee96dd6a6e7a00"
+    },
+    "transaction": {
+        "prev_hash": "3815752563947ba5342fefa059479d476a2586a5544574bd9605c0135bbc4832",
+        "seq": 8,
+        "time": 1519574213825779791,
+        "kitty_id": 8,
+        "from": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+        "to": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+        "sig": "408980e7c3671fcd3fc7c6258d3de8b4ad477323456850080ff603578f72f99000f712a195bd77393de32be08125436a9d02553448b2e3d3b43dee96dd6a6e7a00"
     }
 }
+```
+
+Request (for encoded reply):
+
+```text
+GET http://127.0.0.1:8080/api/iko/tx/72e9b929f77d35cd556c4fe3d758d537b72537330790e186b842786da6d8f3cc.enc?request=hash
+```
+
+**Get Transaction of Sequence:**
+
+Request (for JSON reply):
+
+```text
+GET http://127.0.0.1:8080/api/iko/tx/7.json?request=seq
+```
+
+Response:
+
+```json
+{
+    "meta": {
+        "hash": "1f78bddf95fd20ec9fd44a0f5ac1795cfa65243dfb5adad9b406f6410cd8e855",
+        "raw": "f1003dc6adadd98ab9dac25c836530c613d374862b6efbd16df93ca9aa65c03b0700000000000000507b6202a19f16150700000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac413978272f9baf19ce3aed213a3008891462107299947dd8e32f077f2396b2d7e81e8562a55f4a9506176219b58646dc6387f81298dd4b23b891e06eb83114ab62eb3f84f00"
+    },
+    "transaction": {
+        "prev_hash": "f1003dc6adadd98ab9dac25c836530c613d374862b6efbd16df93ca9aa65c03b",
+        "seq": 7,
+        "time": 1519577438162680656,
+        "kitty_id": 7,
+        "from": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+        "to": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+        "sig": "f9baf19ce3aed213a3008891462107299947dd8e32f077f2396b2d7e81e8562a55f4a9506176219b58646dc6387f81298dd4b23b891e06eb83114ab62eb3f84f00"
+    }
+}
+```
+
+Request (for encoded reply):
+
+```text
+GET http://127.0.0.1:8080/api/iko/tx/7.enc?request=seq
+```
+
+**Get Head Transaction**
+
+Request (for JSON reply):
+
+```text
+GET http://127.0.0.1:8080/api/iko/head_tx.json
+```
+
+Response:
+
+```json
+{
+    "meta": {
+        "hash": "40c34bc724643d5b25beea3fdb3b1eeeff61b08b6ba90111126d2571f28aa33a",
+        "raw": "c18e2c0421ec6f2b8ea06472d333cd499230a1e6599be960cfb5190d3cfb6d3709000000000000007dafaa02a19f16150900000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac4139782723bef43f3d326265978014af2589bca4bde89684683dcf85e13f6f118ac5913ec6b45db49462e94eec00fd1bcdbbe48638533a58042cc3c07f17ede877ebb4fa000"
+    },
+    "transaction": {
+        "prev_hash": "c18e2c0421ec6f2b8ea06472d333cd499230a1e6599be960cfb5190d3cfb6d37",
+        "seq": 9,
+        "time": 1519577438167412605,
+        "kitty_id": 9,
+        "from": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+        "to": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+        "sig": "3bef43f3d326265978014af2589bca4bde89684683dcf85e13f6f118ac5913ec6b45db49462e94eec00fd1bcdbbe48638533a58042cc3c07f17ede877ebb4fa000"
+    }
+}
+```
+
+Request (for encoded response):
+
+```text
+GET http://127.0.0.1:8080/api/iko/head_tx.enc
+```
+
+**Inject Transaction**
+
+Request:
+
+```text
+POST http://127.0.0.1:8080/api/iko/inject_tx
+Content-Type: application/json or application/octet-stream
 ```
