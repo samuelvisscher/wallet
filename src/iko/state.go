@@ -139,6 +139,5 @@ func (s *MemoryState) MoveKitty(tx TxHash, kittyID KittyID, from, to cipher.Addr
 		toState.Kitties.Add(kittyID)
 		toState.Transactions = append(toState.Transactions, tx)
 	}
-
 	return nil
 }
