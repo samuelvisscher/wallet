@@ -94,3 +94,10 @@ func sendRaw(w http.ResponseWriter, data []byte, status int) {
 	w.WriteHeader(status)
 	w.Write(data)
 }
+
+func sendBin(w http.ResponseWriter, data []byte, status int) error {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(status)
+	w.Write(data)
+	return nil
+}

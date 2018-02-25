@@ -83,21 +83,25 @@ func getTx(g *iko.BlockChain) httpAction {
 		if e != nil {
 			return send404(w, e)
 		}
-		return send200(w, TxReply{
-			Meta: TxMeta{
-				Hash: tx.Hash().Hex(),
-				Raw:  hex.EncodeToString(tx.Serialize()),
-			},
-			Tx: Tx{
-				PrevHash: tx.Prev.Hex(),
-				Seq:      tx.Seq,
-				TS:       tx.TS,
-				KittyID:  tx.KittyID,
-				From:     tx.From.String(),
-				To:       tx.To.String(),
-				Sig:      tx.Sig.Hex(),
-			},
-		})
+		if r.URL.Query().Get("raw") == "true" {
+			return sendBin(w, tx.Serialize(), http.StatusOK)
+		} else {
+			return send200(w, TxReply{
+				Meta: TxMeta{
+					Hash: tx.Hash().Hex(),
+					Raw:  hex.EncodeToString(tx.Serialize()),
+				},
+				Tx: Tx{
+					PrevHash: tx.Prev.Hex(),
+					Seq:      tx.Seq,
+					TS:       tx.TS,
+					KittyID:  tx.KittyID,
+					From:     tx.From.String(),
+					To:       tx.To.String(),
+					Sig:      tx.Sig.Hex(),
+				},
+			})
+		}
 	}
 }
 
@@ -114,21 +118,25 @@ func getTxOfSeq(g *iko.BlockChain) httpAction {
 		if e != nil {
 			return send404(w, e)
 		}
-		return send200(w, TxReply{
-			Meta: TxMeta{
-				Hash: tx.Hash().Hex(),
-				Raw:  hex.EncodeToString(tx.Serialize()),
-			},
-			Tx: Tx{
-				PrevHash: tx.Prev.Hex(),
-				Seq:      tx.Seq,
-				TS:       tx.TS,
-				KittyID:  tx.KittyID,
-				From:     tx.From.String(),
-				To:       tx.To.String(),
-				Sig:      tx.Sig.Hex(),
-			},
-		})
+		if r.URL.Query().Get("raw") == "true" {
+			return sendBin(w, tx.Serialize(), http.StatusOK)
+		} else {
+			return send200(w, TxReply{
+				Meta: TxMeta{
+					Hash: tx.Hash().Hex(),
+					Raw:  hex.EncodeToString(tx.Serialize()),
+				},
+				Tx: Tx{
+					PrevHash: tx.Prev.Hex(),
+					Seq:      tx.Seq,
+					TS:       tx.TS,
+					KittyID:  tx.KittyID,
+					From:     tx.From.String(),
+					To:       tx.To.String(),
+					Sig:      tx.Sig.Hex(),
+				},
+			})
+		}
 	}
 }
 
