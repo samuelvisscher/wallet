@@ -4,7 +4,7 @@ Where one claims ownership of dem' kitties.
 
 ## Run IKO node (test mode)
 
-Run a node with test data. 10 kitties.
+Run a node with test data and 10 kitties.
 
 ```bash
 iko \
