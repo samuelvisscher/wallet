@@ -130,6 +130,7 @@ func GetTxOfSeq(httpAddr string, txSeq uint64) (*iko.Transaction, *RespMeta) {
 	}
 }
 
+// GetHeadTx obtains the head transaction.
 func GetHeadTx(httpAddr string) (*iko.Transaction, *RespMeta) {
 	r, e := http.DefaultClient.Get(
 		path.Join(httpAddr, "/api/iko/head_tx.enc"),
@@ -158,6 +159,8 @@ func GetHeadTx(httpAddr string) (*iko.Transaction, *RespMeta) {
 	}
 }
 
+// InjectTx injects a transaction to the blockchain.
+// Note that the transaction needs to be signed and the fields need to be correct. (eg. seq, prev)
 func InjectTx(httpAddr string, tx *iko.Transaction) (*RespMeta) {
 	r, e := http.DefaultClient.Post(
 		path.Join(httpAddr, "/api/iko/inject_tx"),
