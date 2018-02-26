@@ -54,7 +54,7 @@ func SwitchExtension(w http.ResponseWriter, p *Path, jsonAction, encAction func(
 	switch p.Extension {
 	case "", ".json":
 		return jsonAction()
-	case ".enc" ,".bin":
+	case ".enc", ".bin":
 		return encAction()
 	default:
 		return sendJson(w, http.StatusMethodNotAllowed,

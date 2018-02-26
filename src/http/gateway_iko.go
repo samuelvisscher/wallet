@@ -251,7 +251,7 @@ func injectTx(g *iko.BlockChain) HandlerFunc {
 		default:
 			return sendJson(w, http.StatusBadRequest,
 				fmt.Sprintf("content type '%s' is not supported, expecting '%s'",
-				contentType, []string{"application/json", "application/octet-stream"}))
+					contentType, []string{"application/json", "application/octet-stream"}))
 		}
 		if e := g.InjectTx(tx); e != nil {
 			return sendJson(w, http.StatusBadRequest,
