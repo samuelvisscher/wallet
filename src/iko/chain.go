@@ -31,6 +31,10 @@ type ChainDB interface {
 	// It should return an error when the sequence given is invalid,
 	//	or the tx doesn't exist.
 	GetTxOfSeq(seq uint64) (Transaction, error)
+
+	// TxChan obtains a channel where new transactions are sent through.
+	// When a transaction is added to the `ChainDB` implementation,
+	//	we expect to see it getting sent through here too.
 	TxChan() <-chan *Transaction
 }
 
