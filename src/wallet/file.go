@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"fmt"
+	"gopkg.in/sirupsen/logrus.v1"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,7 +12,10 @@ import (
 )
 
 // This holds the root directory.
-var rootDir string
+var (
+	rootDir string
+	log     = logrus.New()
+)
 
 // SetRootDir sets the root directory.
 func SetRootDir(r string) error {
