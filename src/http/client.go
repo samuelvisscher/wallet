@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/kittycash/wallet/src/iko"
@@ -9,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
-	"bytes"
 )
 
 type RespMeta struct {
@@ -161,7 +161,7 @@ func GetHeadTx(httpAddr string) (*iko.Transaction, *RespMeta) {
 
 // InjectTx injects a transaction to the blockchain.
 // Note that the transaction needs to be signed and the fields need to be correct. (eg. seq, prev)
-func InjectTx(httpAddr string, tx *iko.Transaction) (*RespMeta) {
+func InjectTx(httpAddr string, tx *iko.Transaction) *RespMeta {
 	r, e := http.DefaultClient.Post(
 		path.Join(httpAddr, "/api/iko/inject_tx"),
 		"application/octet-stream",
