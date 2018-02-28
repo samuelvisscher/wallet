@@ -6,13 +6,35 @@ import (
 	"sync"
 )
 
+// ChainDB represents where the transactions/blocks are stored.
+// For iko, we combined blocks and transactions to become a single entity.
+// Checks for whether txs are malformed shouldn't happen here.
 type ChainDB interface {
+	// Head should obtain the head transaction.
+	// It should return an error when there are no transactions recorded.
 	Head() (Transaction, error)
+
+	// HeadSeq should obtain the sequence index of the head transaction.
 	HeadSeq() uint64
+
+	// Len should obtain the length of the chain.
 	Len() uint64
+
+	// AddTx should add a transaction to the chain.
 	AddTx(tx Transaction) error
+
+	// GetTxOfHash should obtain a transaction of a given hash.
+	// It should return an error when the tx doesn't exist.
 	GetTxOfHash(hash TxHash) (Transaction, error)
+
+	// GetTxOfSeq should obtain a transaction of a given sequence.
+	// It should return an error when the sequence given is invalid,
+	//	or the tx doesn't exist.
 	GetTxOfSeq(seq uint64) (Transaction, error)
+
+	// TxChan obtains a channel where new transactions are sent through.
+	// When a transaction is successfully saved to the `ChainDB` implementation,
+	//	we expect to see it getting sent through here too.
 	TxChan() <-chan *Transaction
 }
 
