@@ -29,9 +29,10 @@ func NewManager() (*Manager, error) {
 		case enc:
 			return
 		}
-
+		// TODO (evanlinjin): Finish.
 	})
 	if e != nil {
 		return nil, e
 	}
+	return m, nil
 }
