@@ -33,7 +33,7 @@ type ChainDB interface {
 	GetTxOfSeq(seq uint64) (Transaction, error)
 
 	// TxChan obtains a channel where new transactions are sent through.
-	// When a transaction is added to the `ChainDB` implementation,
+	// When a transaction is successfully saved to the `ChainDB` implementation,
 	//	we expect to see it getting sent through here too.
 	TxChan() <-chan *Transaction
 }
