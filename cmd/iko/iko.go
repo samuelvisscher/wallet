@@ -18,10 +18,20 @@ const (
 	TestMode           = "test"
 	TestSecretKey      = "test-secret-key"
 	TestInjectionCount = "test-injection-count"
+
+	HttpAddress = "http-address"
+	GUI         = "gui"
+	GUIDir      = "gui-dir"
+	TLS         = "tls"
+	TLSCert     = "tls-cert"
+	TLSKey      = "tls-key"
 )
 
-func Flag(flag, short string) string {
-	return flag + ", " + short
+func Flag(flag string, short ...string) string {
+	if len(short) == 0 {
+		return flag
+	}
+	return flag + ", " + short[0]
 }
 
 var (
@@ -33,17 +43,23 @@ func init() {
 	app.Name = "iko"
 	app.Description = "kittycash initial coin offering service"
 	app.Flags = cli.FlagsByName{
-
+		/*
+			<<< MASTER PUBLIC KEY >>>
+		*/
 		cli.StringFlag{
 			Name:  Flag(MasterPublicKey, "pk"),
 			Usage: "public key to trust as master decision maker",
 		},
-
+		/*
+			<<< MEMORY MODE >>>
+		*/
 		cli.BoolFlag{
 			Name:  Flag(MemoryMode, "m"),
 			Usage: "whether to run in memory-only mode",
 		},
-
+		/*
+			<<< TEST MODE >>>
+		*/
 		cli.BoolFlag{
 			Name:  Flag(TestMode, "t"),
 			Usage: "whether to use test data for run",
@@ -55,6 +71,35 @@ func init() {
 		cli.IntFlag{
 			Name:  Flag(TestInjectionCount, "tc"),
 			Usage: "only valid in test mode, injects a number of initial transactions for testing",
+		},
+		/*
+			<<< HTTP SERVER >>>
+		*/
+		cli.StringFlag{
+			Name:  Flag(HttpAddress),
+			Usage: "address to serve http server on",
+			Value: "127.0.0.1:8080",
+		},
+		cli.BoolTFlag{
+			Name:  Flag(GUI),
+			Usage: "whether to enable gui",
+		},
+		cli.StringFlag{
+			Name:  Flag(GUIDir),
+			Usage: "directory to serve GUI from",
+			Value: "./static",
+		},
+		cli.BoolFlag{
+			Name:  Flag(TLS),
+			Usage: "whether to enable tls",
+		},
+		cli.StringFlag{
+			Name:  Flag(TLSCert),
+			Usage: "tls certificate file path",
+		},
+		cli.StringFlag{
+			Name:  Flag(TLSKey),
+			Usage: "tls key file path",
 		},
 	}
 	app.Action = cli.ActionFunc(action)
@@ -118,7 +163,8 @@ func action(ctx *cli.Context) error {
 	// Prepare http server.
 	httpServer, e := http.NewServer(
 		&http.ServerConfig{
-			Address:   "127.0.0.1:8080",
+			Address:   ctx.String(HttpAddress),
+			EnableGUI: ctx.BoolT(GUI),
 			EnableTLS: false,
 		},
 		&http.Gateway{

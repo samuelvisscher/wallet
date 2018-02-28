@@ -1,13 +1,13 @@
 package wallet
 
 import (
-	"path/filepath"
-	"path"
-	"strings"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
-	"io"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
 // This holds the root directory.
