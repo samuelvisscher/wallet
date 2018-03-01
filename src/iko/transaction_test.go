@@ -82,7 +82,7 @@ func runTransactionVerifyTest(t *testing.T, stateDB StateDB) {
 	})
 
 	t.Run("Transaction_Audit_Verify_Success", func(t *testing.T) {
-		require.Equal(t, nextTrans.Verify(prev), nil, "Verify should return nil for valid transactions")
+		require.Nil(t, nextTrans.Verify(prev), "Verify should return nil for valid transactions")
 	})
 }
 
