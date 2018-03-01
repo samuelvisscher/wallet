@@ -62,10 +62,10 @@ func runTransactionVerifyTest(t *testing.T, stateDB StateDB) {
 		// Revert transaction previous hash to its original state and change seqence number to test if verfiy returns error
 		nextTrans.Prev = prev.Hash()
 		nextTrans.Seq = prev.Seq + 5
-		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed!!")
+		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed and should be invalid!!")
 
 		nextTrans.Seq = prev.Seq
-		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed")
+		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed and should be invalid!!")
 
 		// Revert transaction sequence to its original state and change TS to test if Verify will return an error
 		nextTrans.Seq = prev.Seq + 1
