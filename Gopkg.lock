@@ -57,7 +57,7 @@
     ".",
     "assert",
     "http",
-    "mock"
+    "mock",
     "require"
   ]
   revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
