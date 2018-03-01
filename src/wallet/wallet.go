@@ -39,6 +39,7 @@ type FloatingMeta struct {
 	Label     string `json:"label"`
 	Encrypted bool   `json:"encrypted"`
 	Password  string `json:"-"`
+	Saved     bool   `json:"-"`
 	Meta
 }
 
@@ -49,16 +50,21 @@ type Meta struct {
 }
 
 type FloatingWallet struct {
+	Meta    FloatingMeta     `json:"meta"`
+	Entries []*FloatingEntry `json:"entries"`
+}
+
+type Wallet struct {
 	Meta    FloatingMeta
 	Entries []Entry
 }
 
-type Wallet struct {
+type File struct {
 	Meta    Meta
 	Entries []Entry
 }
 
-func (w Wallet) Serialize() []byte {
+func (w File) Serialize() []byte {
 	return encoder.Serialize(w)
 }
 
@@ -66,14 +72,14 @@ func (w Wallet) Serialize() []byte {
 	<<< CREATION >>>
 */
 
-type FloatingWalletOptions struct {
+type WalletOptions struct {
 	Label     string `json:"string"`
 	Seed      string `json:"seed"`
 	Encrypted bool   `json:"encrypted"`
 	Password  string `json:"password,omitempty"`
 }
 
-func (o *FloatingWalletOptions) Verify() error {
+func (o *WalletOptions) Verify() error {
 	if o.Label == "" {
 		return errors.New("invalid label")
 	}
@@ -86,12 +92,12 @@ func (o *FloatingWalletOptions) Verify() error {
 	return nil
 }
 
-func NewFloatingWallet(options *FloatingWalletOptions) (*FloatingWallet, error) {
+func NewFloatingWallet(options *WalletOptions) (*Wallet, error) {
 	if e := options.Verify(); e != nil {
 		return nil, e
 	}
 
-	return &FloatingWallet{
+	return &Wallet{
 		Meta: FloatingMeta{
 			Version:   Version,
 			Label:     options.Label,
@@ -107,7 +113,7 @@ func NewFloatingWallet(options *FloatingWalletOptions) (*FloatingWallet, error) 
 	}, nil
 }
 
-func LoadFloatingWallet(f io.Reader, label, password string) (*FloatingWallet, error) {
+func LoadFloatingWallet(f io.Reader, label, password string) (*Wallet, error) {
 	raw, e := ioutil.ReadAll(f)
 	if e != nil {
 		return nil, e
@@ -127,11 +133,11 @@ func LoadFloatingWallet(f io.Reader, label, password string) (*FloatingWallet, e
 		password = ""
 	}
 
-	var wallet Wallet
+	var wallet File
 	if e := encoder.DeserializeRaw(data, &wallet); e != nil {
 		return nil, e
 	}
-	return &FloatingWallet{
+	return &Wallet{
 		Meta: FloatingMeta{
 			Version:   prefix.Version(),
 			Label:     label,
@@ -143,50 +149,76 @@ func LoadFloatingWallet(f io.Reader, label, password string) (*FloatingWallet, e
 	}, nil
 }
 
-func (fw *FloatingWallet) Save() error {
-	version := fw.Meta.Version
+func (w *Wallet) Save() error {
+	version := w.Meta.Version
 
 	nonce := EmptyNonce()
-	if fw.Meta.Encrypted {
+	if w.Meta.Encrypted {
 		nonce = RandNonce()
 	}
 
 	prefix := NewPrefix(version, nonce)
 
-	data := fw.ToWallet().Serialize()
-	if fw.Meta.Encrypted {
+	data := w.ToFile().Serialize()
+	if w.Meta.Encrypted {
 		var e error
-		pHash := cipher.SumSHA256([]byte(fw.Meta.Password))
+		pHash := cipher.SumSHA256([]byte(w.Meta.Password))
 		data, e = cipher.Chacha20Encrypt(data, pHash[:], nonce)
 		if e != nil {
 			return e
 		}
 	}
 
-	return SaveBinary(
-		LabelPath(fw.Meta.Label),
+	e := SaveBinary(
+		LabelPath(w.Meta.Label),
 		append(prefix[:], data...),
 	)
+	if e != nil {
+		return e
+	}
+
+	w.Meta.Saved = true
+	return nil
 }
 
-func (fw *FloatingWallet) GenerateEntries(n int) {
-	sks := cipher.GenerateDeterministicKeyPairs([]byte(fw.Meta.Seed), n)
-	fw.Entries = make([]Entry, n)
+func (w *Wallet) EnsureEntries(n int) error {
+	switch {
+	case n < 0:
+		return errors.New("can not have negative number of entries")
+	case n <= w.Count():
+		return nil
+	}
+	sks := cipher.GenerateDeterministicKeyPairs([]byte(w.Meta.Seed), n)
+	w.Entries = make([]Entry, n)
 	for i := 0; i < n; i++ {
 		entry, _ := NewEntry(sks[i])
-		fw.Entries[i] = *entry
+		w.Entries[i] = *entry
+	}
+
+	w.Meta.Saved = false
+	return nil
+}
+
+func (w *Wallet) Count() int {
+	return len(w.Entries)
+}
+
+func (w *Wallet) ToFile() *File {
+	return &File{
+		Meta:    w.Meta.Meta,
+		Entries: w.Entries,
 	}
 }
 
-func (fw *FloatingWallet) Count() int {
-	return len(fw.Entries)
-}
-
-func (fw *FloatingWallet) ToWallet() *Wallet {
-	return &Wallet{
-		Meta:    fw.Meta.Meta,
-		Entries: fw.Entries,
+func (w *Wallet) ToFloating() *FloatingWallet {
+	fw := &FloatingWallet{
+		Meta:    w.Meta,
+		Entries: make([]*FloatingEntry, len(w.Entries)),
 	}
+	for i, entry := range w.Entries {
+		fw.Entries[i] = entry.ToFloating()
+	}
+	return fw
 }
 
 /*
