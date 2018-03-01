@@ -116,9 +116,12 @@ func runTransactionIsKittyGen(t *testing.T, stateDB StateDB) {
 
 	stateDB.AddKitty(txHash, kID, cAddress)
 
-	// If there's an error creating kitty, then deviate testing transaction -- no kitty means no transaction
 	prev := NewGenTx(nil, kID, sk)
 
+	/**
+	 * Testing if methods return false when tx.From != tx.To
+	 * or pk is wrong
+	 */
 	t.Run("Transaction_AuditIsKittyGen_VerifyFalse", func(t *testing.T) {
 		require.False(t, prev.IsKittyGen(cipher.PubKeyFromSecKey(sk2)), "Incorrect public key passed to method. Tx.IsKittyGen should return False")
 
