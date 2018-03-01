@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrWalletNotFound = errors.New("wallet of label is not found")
-	ErrWalletLocked   = errors.New("wallet is locked")
+	ErrWalletNotFound     = errors.New("wallet of label is not found")
+	ErrWalletLocked       = errors.New("wallet is locked")
 	ErrLabelAlreadyExists = errors.New("label already exists")
 )
 
