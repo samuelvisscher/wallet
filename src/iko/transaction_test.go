@@ -86,7 +86,58 @@ func runTransactionVerifyTest(t *testing.T, stateDB StateDB) {
 	})
 }
 
+func runTransactionIsKittyGen(t *testing.T, stateDB StateDB) {
+	sk := cipher.SecKey([32]byte{
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+	})
+
+	sk2 := cipher.SecKey([32]byte{
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		3, 4, 5, 6,
+		5, 4, 3, 6,
+		3, 4, 5, 6,
+		4, 4, 5, 6,
+		3, 4, 5, 6,
+	})
+
+	cAddress := cipher.AddressFromSecKey(sk)
+
+	txHash := TxHash(cipher.SumSHA256([]byte{3, 7, 5, 6}))
+	kID := KittyID(4)
+
+	stateDB.AddKitty(txHash, kID, cAddress)
+
+	// If there's an error creating kitty, then deviate testing transaction -- no kitty means no transaction
+	prev := NewGenTx(nil, kID, sk)
+
+	t.Run("Transaction_AuditIsKittyGen_VerifyFalse", func(t *testing.T) {
+		require.False(t, prev.IsKittyGen(cipher.PubKeyFromSecKey(sk2)), "Incorrect public key passed to method. Tx.IsKittyGen should return False")
+
+		prev.From = cipher.AddressFromSecKey(sk2)
+		require.False(t, prev.IsKittyGen(cipher.PubKeyFromSecKey(sk)), "Tx.From and Tx.to are not the same. Tx.IsKittyGen should return False")
+	})
+
+	t.Run("Transaction_TestIsKittyGen_Valid", func(t *testing.T) {
+		prev.From = cipher.AddressFromSecKey(sk)
+		require.True(t, prev.IsKittyGen(cipher.PubKeyFromSecKey(sk)), "Tx.From and Tx.To are the same. Tx.IsKittyGen should return True")
+	})
+}
+
 func TestTransaction_Verify(t *testing.T) {
 	stateDB := NewMemoryState()
 	runTransactionVerifyTest(t, stateDB)
+}
+
+func TestTransaction_IsKittyGen(t *testing.T) {
+	stateDB := NewMemoryState()
+	runTransactionIsKittyGen(t, stateDB)
 }
