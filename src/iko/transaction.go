@@ -9,8 +9,26 @@ import (
 	"time"
 )
 
+type TxHash cipher.SHA256
+
+func (h TxHash) Hex() string {
+	return cipher.SHA256(h).Hex()
+}
+
+type TxHashes []TxHash
+
+func (h TxHashes) ToStringArray() []string {
+	out := make([]string, len(h))
+	for i, hash := range h {
+		out[i] = hash.Hex()
+	}
+	return out
+}
+
 type TxAction func(tx *Transaction) error
 
+// Transaction represents a kitty transaction.
+// For IKO, transaction and block are combined to formed one entity.
 type Transaction struct {
 	Prev TxHash
 	Seq  uint64 // Each transaction has a sequence.
@@ -22,6 +40,7 @@ type Transaction struct {
 	Sig     cipher.Sig
 }
 
+// NewGenTx creates a "gen" transaction. This is where a kitty is created on the blockchain.
 func NewGenTx(prev *Transaction, kittyID KittyID, sk cipher.SecKey) *Transaction {
 	var (
 		address = cipher.AddressFromSecKey(sk)
@@ -51,6 +70,8 @@ func NewGenTx(prev *Transaction, kittyID KittyID, sk cipher.SecKey) *Transaction
 	return tx
 }
 
+// NewTransferTx creates a normal transaction where a kitty is transferred from
+// one address to another.
 func NewTransferTx(prev *Transaction, kittyID KittyID, to cipher.Address, sk cipher.SecKey) *Transaction {
 	tx := &Transaction{
 		Prev:    prev.Hash(),
@@ -153,20 +174,4 @@ func (tx Transaction) IsKittyGen(pk cipher.PubKey) bool {
 func (tx Transaction) String() string {
 	return fmt.Sprintf("prev:%s|seq:%d|ts:%d|kitty_id:%d|from:%s|to:%s|sig:%s",
 		tx.Prev.Hex(), tx.Seq, tx.TS, tx.KittyID, tx.From.String(), tx.To.String(), tx.Sig.Hex())
-}
-
-type TxHash cipher.SHA256
-
-func (h TxHash) Hex() string {
-	return cipher.SHA256(h).Hex()
-}
-
-type TxHashes []TxHash
-
-func (h TxHashes) ToStringArray() []string {
-	out := make([]string, len(h))
-	for i, hash := range h {
-		out[i] = hash.Hex()
-	}
-	return out
 }

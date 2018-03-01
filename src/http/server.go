@@ -1,12 +1,21 @@
 package http
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path"
 	"time"
+)
+
+const (
+	indexFileName = "index.html"
 )
 
 type ServerConfig struct {
 	Address     string
+	EnableGUI   bool
+	GUIDir      string
 	EnableTLS   bool
 	TLSCertFile string
 	TLSKeyFile  string
@@ -62,7 +71,30 @@ func (s *Server) serve() {
 }
 
 func (s *Server) prepareMux() error {
+	if s.c.EnableGUI {
+		if e := s.prepareGUI(); e != nil {
+			return e
+		}
+	}
 	return s.api.host(s.mux)
+}
+
+func (s *Server) prepareGUI() error {
+	appLoc := s.c.GUIDir
+	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		page := path.Join(appLoc, indexFileName)
+		http.ServeFile(w, r, page)
+	})
+
+	list, _ := ioutil.ReadDir(appLoc)
+	for _, fInfo := range list {
+		route := fmt.Sprintf("/%s", fInfo.Name())
+		if fInfo.IsDir() {
+			route += "/"
+		}
+		s.mux.Handle(route, http.FileServer(http.Dir(appLoc)))
+	}
+	return nil
 }
 
 // Close quits the http server.

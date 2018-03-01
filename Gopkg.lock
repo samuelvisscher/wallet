@@ -39,6 +39,7 @@
     "src/cipher/ripemd160",
     "src/cipher/secp256k1-go",
     "src/cipher/secp256k1-go/secp256k1-go2",
+    "src/util/file",
     "src/util/logging"
   ]
   revision = "4a11cd3a2841bbb555734c6889838fefabfa1b41"
@@ -57,6 +58,7 @@
     "assert",
     "http",
     "mock"
+    "require"
   ]
   revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
   version = "v1.2.1"
@@ -91,6 +93,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "22fd427bbaf34b7f0dcba9355148116909a3f3ede5ca4930bf4788ebf011df2d"
+  inputs-digest = "2d28ad4226e7a229272c73cc417a8177949ea31e356dc7248aa827d39a664eb6"
   solver-name = "gps-cdcl"
   solver-version = 1
