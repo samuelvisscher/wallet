@@ -1,7 +1,6 @@
 package iko
 
 import (
-	/*	"errors"*/
 	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/stretchr/testify/require"
@@ -56,9 +55,32 @@ func runTransactionVerifyTest(t *testing.T, stateDB StateDB) {
 		prev := NewGenTx(nil, kID, sk)
 		nextTrans := NewTransferTx(prev, kID, toAddress, sk)
 
-		fmt.Println(nextTrans.Seq)
+		// Change transaction previous hash to test if verify return error
 		nextTrans.Prev = TxHash(cipher.SumSHA256([]byte{3, 4, 5, 6}))
 		require.Errorf(t, nextTrans.Verify(prev), "Previous hash was changed!!")
+
+		// Revert transaction previous hash to its original state and change seqence number to test if verfiy returns error
+		nextTrans.Prev = prev.Hash()
+		nextTrans.Seq = prev.Seq + 5
+		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed!!")
+
+		nextTrans.Seq = prev.Seq
+		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed")
+
+		// Revert transaction sequence to its original state and change TS to test if Verify will return an error
+		nextTrans.Seq = prev.Seq + 1
+		TS := nextTrans.TS
+		nextTrans.TS = prev.TS - 10
+		require.Errorf(t, nextTrans.Verify(prev), "TS was changed and should be invalid")
+		fmt.Println(nextTrans.Verify(prev))
+
+		// Revert transaction TS to its original state and test to ensure function returns nil when transaction is valid
+		nextTrans.TS = TS
+		require.Equal(t, nextTrans.Verify(prev), nil, "Verify should return nil for valid transactions")
+	})
+
+	t.Run("", func(t *testing.T) {
+
 	})
 }
 
