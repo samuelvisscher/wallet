@@ -19,7 +19,7 @@ func initTempDir(t *testing.T) func() {
 	}
 }
 
-func saveWallet(t *testing.T, options *WalletOptions) {
+func saveWallet(t *testing.T, options *Options) {
 	fWallet, e := NewFloatingWallet(options)
 	require.Empty(t, e, "failed to create floating wallet")
 
@@ -42,7 +42,7 @@ func TestFloatingWallet_Save(t *testing.T) {
 	rmTemp := initTempDir(t)
 	defer rmTemp()
 
-	run := func(o *WalletOptions) {
+	run := func(o *Options) {
 		saveWallet(t, o)
 		fw := loadWallet(t, o.Label, o.Password)
 		m := fw.Meta
@@ -52,7 +52,7 @@ func TestFloatingWallet_Save(t *testing.T) {
 		require.Equal(t, m.Seed, o.Seed, "seed does not match")
 	}
 
-	cases := []WalletOptions{
+	cases := []Options{
 		{
 			Label:     "wallet0",
 			Seed:      "secure seed",

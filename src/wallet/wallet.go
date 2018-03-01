@@ -72,14 +72,14 @@ func (w File) Serialize() []byte {
 	<<< CREATION >>>
 */
 
-type WalletOptions struct {
+type Options struct {
 	Label     string `json:"string"`
 	Seed      string `json:"seed"`
 	Encrypted bool   `json:"encrypted"`
 	Password  string `json:"password,omitempty"`
 }
 
-func (o *WalletOptions) Verify() error {
+func (o *Options) Verify() error {
 	if o.Label == "" {
 		return errors.New("invalid label")
 	}
@@ -92,7 +92,7 @@ func (o *WalletOptions) Verify() error {
 	return nil
 }
 
-func NewFloatingWallet(options *WalletOptions) (*Wallet, error) {
+func NewFloatingWallet(options *Options) (*Wallet, error) {
 	if e := options.Verify(); e != nil {
 		return nil, e
 	}

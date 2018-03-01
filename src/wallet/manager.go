@@ -99,7 +99,7 @@ func (m *Manager) ListWallets() []Stat {
 
 // NewWallet creates a new wallet (and it's associated file)
 // with specified options, and the number of addresses to generate under it.
-func (m *Manager) NewWallet(opts *WalletOptions, addresses int) error {
+func (m *Manager) NewWallet(opts *Options, addresses int) error {
 	defer m.lock()()
 
 	if _, ok := m.wallets[opts.Label]; ok {
