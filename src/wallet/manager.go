@@ -9,27 +9,30 @@ import (
 )
 
 var (
-	ErrWalletNotFound        = errors.New("wallet of label is not found")
-	ErrWalletLocked          = errors.New("wallet is locked")
-	ErrWalletAlreadyUnlocked = errors.New("wallet is already unlocked")
+	ErrWalletNotFound = errors.New("wallet of label is not found")
+	ErrWalletLocked   = errors.New("wallet is locked")
+	ErrLabelAlreadyExists = errors.New("label already exists")
 )
 
+// Manager manages the wallet files.
 type Manager struct {
 	mux     sync.Mutex
 	labels  []string
 	wallets map[string]*Wallet
 }
 
+// NewManager creates a new wallet manager.
 func NewManager() (*Manager, error) {
 	m := new(Manager)
-	if e := m.Reset(); e != nil {
+	if e := m.Refresh(); e != nil {
 		return nil, e
 	}
 	return m, nil
 }
 
-
-func (m *Manager) Reset() error {
+// Refresh reloads the list of wallets.
+// All wallets will be locked.
+func (m *Manager) Refresh() error {
 	defer m.lock()()
 
 	m.labels = make([]string, 0)
@@ -56,12 +59,14 @@ func (m *Manager) Reset() error {
 	return m.sort()
 }
 
+// Stat represents a wallet when listed by 'ListWallets'.
 type Stat struct {
 	Label     string `json:"label"`
 	Encrypted bool   `json:"encrypted"`
 	Locked    *bool  `json:"locked,omitempty"`
 }
 
+// Lists the wallets available.
 func (m *Manager) ListWallets() []Stat {
 	defer m.lock()()
 
@@ -92,8 +97,14 @@ func (m *Manager) ListWallets() []Stat {
 	return out
 }
 
+// NewWallet creates a new wallet (and it's associated file)
+// with specified options, and the number of addresses to generate under it.
 func (m *Manager) NewWallet(opts *WalletOptions, addresses int) error {
 	defer m.lock()()
+
+	if _, ok := m.wallets[opts.Label]; ok {
+		return ErrLabelAlreadyExists
+	}
 
 	fw, e := NewFloatingWallet(opts)
 	if e != nil {
@@ -109,6 +120,7 @@ func (m *Manager) NewWallet(opts *WalletOptions, addresses int) error {
 	return m.sort()
 }
 
+// DeleteWallet deletes a wallet of a given label.
 func (m *Manager) DeleteWallet(label string) error {
 	defer m.lock()()
 
@@ -118,6 +130,8 @@ func (m *Manager) DeleteWallet(label string) error {
 	return ErrWalletNotFound
 }
 
+// DisplayWallet displays the wallet of specified label.
+// Password needs to be given if a wallet is still locked.
 func (m *Manager) DisplayWallet(label, password string) (*FloatingWallet, error) {
 	defer m.lock()()
 
@@ -145,6 +159,8 @@ func (m *Manager) DisplayWallet(label, password string) (*FloatingWallet, error)
 	}
 }
 
+// EnsureWalletEntries ensures that the wallet of specified label
+// has the specified number of address entries.
 func (m *Manager) EnsureWalletEntries(label string, addresses int) (*FloatingWallet, error) {
 	defer m.lock()()
 
