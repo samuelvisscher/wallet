@@ -30,7 +30,7 @@ func NewEntry(sk cipher.SecKey) (*Entry, error) {
 	}, nil
 }
 
-func (we *Entry) ToReadable() *FloatingEntry {
+func (we *Entry) ToFloating() *FloatingEntry {
 	return &FloatingEntry{
 		Address: we.Address.String(),
 		PubKey:  we.PubKey.Hex(),

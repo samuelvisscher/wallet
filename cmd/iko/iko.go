@@ -8,6 +8,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"os/signal"
+	"github.com/kittycash/wallet/src/wallet"
 )
 
 const (
@@ -160,6 +161,14 @@ func action(ctx *cli.Context) error {
 		}
 	}
 
+	// Prepare wallet.
+	os.MkdirAll("wallet", os.FileMode(0700))
+	wallet.SetRootDir("wallet")
+	walletManager, e := wallet.NewManager()
+	if e != nil {
+		return e
+	}
+
 	// Prepare http server.
 	httpServer, e := http.NewServer(
 		&http.ServerConfig{
@@ -168,7 +177,8 @@ func action(ctx *cli.Context) error {
 			EnableTLS: false,
 		},
 		&http.Gateway{
-			IKO: bc,
+			IKO:    bc,
+			Wallet: walletManager,
 		},
 	)
 	if e != nil {
