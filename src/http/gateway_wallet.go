@@ -55,16 +55,16 @@ func listWallets(g *wallet.Manager) HandlerFunc {
 		// - 'Content-Type': 'application/json'.
 		// - json representation of 'WalletsReply'.
 
-		// Get list of wallets
-		wallets WalletsReply
-		wallets.Wallets = g.ListWallets()
+		// Get list of listWall
+		listWall WalletsReply
+		listWall.Wallets = g.ListWallets()
 
-		if stat != nil {
+		if listWall.Wallets != nil {
 			// Send json response, status= 200 to user if content was found
-			return sendJson(w, http.StatusOK, wallets.Wallets)
+			return sendJson(w, http.StatusOK, listWall.Wallets)
 		} else {
 			// Send json response, status= 204 to user if no content was found
-			return sendJson(w, http.StatusNoContent, wallets)
+			return sendJson(w, http.StatusNoContent, listWall)
 		}
 	}
 }
