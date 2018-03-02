@@ -29,6 +29,12 @@ func ikoGateway(mux *http.ServeMux, g *iko.BlockChain) error {
 		"/api/iko/head_tx.enc",
 	}, "GET", getHeadTx(g))
 
+	MultiHandle(mux, []string{
+		"/api/iko/txes",
+		"/api/iko/txes.json",
+		"/api/iko/txes.enc",
+	}, "GET", getPaginatedTxs(g))
+
 	Handle(mux, "/api/iko/inject_tx",
 		"POST", injectTx(g))
 
@@ -121,6 +127,24 @@ type TxReply struct {
 	Tx   Tx     `json:"transaction"`
 }
 
+func NewTxReplyOfTransaction(tx iko.Transaction) TxReply {
+	return TxReply{
+		Meta: TxMeta{
+			Hash: tx.Hash().Hex(),
+			Raw:  hex.EncodeToString(tx.Serialize()),
+		},
+		Tx: Tx{
+			PrevHash: tx.Prev.Hex(),
+			Seq:      tx.Seq,
+			TS:       tx.TS,
+			KittyID:  tx.KittyID,
+			From:     tx.From.String(),
+			To:       tx.To.String(),
+			Sig:      tx.Sig.Hex(),
+		},
+	}
+}
+
 func getTx(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
 		var tx iko.Transaction
@@ -152,22 +176,7 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 		}
 		return SwitchExtension(w, p,
 			func() error {
-				return sendJson(w, http.StatusOK,
-					TxReply{
-						Meta: TxMeta{
-							Hash: tx.Hash().Hex(),
-							Raw:  hex.EncodeToString(tx.Serialize()),
-						},
-						Tx: Tx{
-							PrevHash: tx.Prev.Hex(),
-							Seq:      tx.Seq,
-							TS:       tx.TS,
-							KittyID:  tx.KittyID,
-							From:     tx.From.String(),
-							To:       tx.To.String(),
-							Sig:      tx.Sig.Hex(),
-						},
-					})
+				return sendJson(w, http.StatusOK, NewTxReplyOfTransaction(tx))
 			},
 			func() error {
 				return sendBin(w, http.StatusOK,
@@ -191,21 +200,7 @@ func getHeadTx(g *iko.BlockChain) HandlerFunc {
 		}
 		return SwitchExtension(w, p,
 			func() error {
-				return sendJson(w, http.StatusOK, TxReply{
-					Meta: TxMeta{
-						Hash: tx.Hash().Hex(),
-						Raw:  hex.EncodeToString(tx.Serialize()),
-					},
-					Tx: Tx{
-						PrevHash: tx.Prev.Hex(),
-						Seq:      tx.Seq,
-						TS:       tx.TS,
-						KittyID:  tx.KittyID,
-						From:     tx.From.String(),
-						To:       tx.To.String(),
-						Sig:      tx.Sig.Hex(),
-					},
-				})
+				return sendJson(w, http.StatusOK, NewTxReplyOfTransaction(tx))
 			},
 			func() error {
 				return sendBin(w, http.StatusOK,
@@ -259,5 +254,56 @@ func injectTx(g *iko.BlockChain) HandlerFunc {
 		}
 		return sendJson(w, http.StatusOK,
 			true)
+	}
+}
+
+type PaginatedTxsReply struct {
+	TotalPageCount uint64    `json:"total_page_count"`
+	TxReplies      []TxReply `json:"transactions"`
+}
+
+// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
+func totalPageCount(len, pageSize uint64) uint64 {
+	if len % pageSize == 0 {
+		return len / pageSize
+	} else {
+		return (len / pageSize) + 1
+	}
+}
+
+func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, p *Path) {
+		perPage, err := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
+		if err != nil {
+			return sendJson(w, http.StatusBadRequest, err.Error())
+		}
+		currentPage, err := strconv.ParseUint(
+			r.URL.Query().Get("current_page"), 10, 64)
+		if err != nil {
+			return sendJson(w, http.StatusBadRequest, err.Error())
+		}
+		currentSeq := uint64(perPage * currentPage)
+		transactions, err := g.chain.GetTxsOfSeqRange(currentSeq, perPage)
+		if err != nil {
+			return sendJson(w, http.StatusBadRequest, err.Error())
+		}
+		var txReplies []Tx
+		for _, transaction := range transactions {
+			txReplies = append(txReplies, NewTxReplyOfTransaction(transaction))
+		}
+		paginatedTxsReply := PaginatedTxsReply{
+			TotalPageCount: totalPageCount(g.chain.Len(), perPage),
+			TxReplies: txReplies,
+		}
+		return SwitchExtension(w, p,
+			func() error { return sendJson(w, http.StatusOK, paginatedTxsReply)	},
+			func() error {
+				// TODO: do we need a proper binary encoding for this?
+				encoded, err := http.Marshal(paginatedTxsReply)
+				if err != nil {
+					return err
+				}
+				return sendBin(w, http.StatusOK, encoded)
+			})
 	}
 }
