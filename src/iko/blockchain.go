@@ -153,7 +153,11 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
-	var check = TxChecker(func(tx *Transaction) error {
+	return bc.chain.AddTx(*tx, makeTxChecker(bc))
+}
+
+func makeTxChecker(bc *BlockChain) TxChecker {
+	return func(tx *Transaction) error {
 		var prev *Transaction
 		if temp, e := bc.chain.Head(); e == nil {
 			prev = &temp
@@ -181,7 +185,5 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 			}
 		}
 		return nil
-	})
-
-	return bc.chain.AddTx(*tx, check)
+	}
 }
