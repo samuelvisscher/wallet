@@ -35,7 +35,7 @@ func refreshWallets(g *wallet.Manager) HandlerFunc {
 		// Send json response with 500 status code if error
 		if err != nil {
 			sendJson(w, http.StatusInternalServerError,
-				fmt.Sprintf("Message: '%s'", err))
+				fmt.Sprintf("Message: %s", err))
 		}
 
 		// Send json response with 200 status code if error is nil
