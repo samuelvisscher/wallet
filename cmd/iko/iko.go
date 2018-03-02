@@ -3,12 +3,12 @@ package main
 import (
 	"github.com/kittycash/wallet/src/http"
 	"github.com/kittycash/wallet/src/iko"
+	"github.com/kittycash/wallet/src/wallet"
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/sirupsen/logrus.v1"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"os/signal"
-	"github.com/kittycash/wallet/src/wallet"
 )
 
 const (
@@ -145,6 +145,7 @@ func action(ctx *cli.Context) error {
 		return e
 	}
 	defer bc.Close()
+	log.Info("finished preparing blockchain")
 
 	// Prepare test data.
 	if testMode {
