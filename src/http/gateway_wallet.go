@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/kittycash/wallet/src/wallet"
 	"net/http"
@@ -56,7 +55,7 @@ func listWallets(g *wallet.Manager) HandlerFunc {
 		// - json representation of 'WalletsReply'.
 
 		// Get list of listWall
-		listWall WalletsReply
+		var listWall WalletsReply
 		listWall.Wallets = g.ListWallets()
 
 		if listWall.Wallets != nil {
