@@ -4,19 +4,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kittycash/wallet/src/iko"
+	"github.com/kittycash/wallet/src/wallet"
 	"net/http"
 	"path"
 	"strings"
 )
 
 type Gateway struct {
-	IKO *iko.BlockChain
+	IKO    *iko.BlockChain
+	Wallet *wallet.Manager
 }
 
 func (g *Gateway) host(mux *http.ServeMux) error {
 
 	if g.IKO != nil {
 		if e := ikoGateway(mux, g.IKO); e != nil {
+			return e
+		}
+	}
+
+	if g.Wallet != nil {
+		if e := walletGateway(mux, g.Wallet); e != nil {
 			return e
 		}
 	}

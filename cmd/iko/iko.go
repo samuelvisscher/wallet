@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/kittycash/wallet/src/http"
 	"github.com/kittycash/wallet/src/iko"
+	"github.com/kittycash/wallet/src/wallet"
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/sirupsen/logrus.v1"
 	"gopkg.in/urfave/cli.v1"
@@ -144,6 +145,7 @@ func action(ctx *cli.Context) error {
 		return e
 	}
 	defer bc.Close()
+	log.Info("finished preparing blockchain")
 
 	// Prepare test data.
 	if testMode {
@@ -160,6 +162,14 @@ func action(ctx *cli.Context) error {
 		}
 	}
 
+	// Prepare wallet.
+	os.MkdirAll("wallet", os.FileMode(0700))
+	wallet.SetRootDir("wallet")
+	walletManager, e := wallet.NewManager()
+	if e != nil {
+		return e
+	}
+
 	// Prepare http server.
 	httpServer, e := http.NewServer(
 		&http.ServerConfig{
@@ -168,7 +178,8 @@ func action(ctx *cli.Context) error {
 			EnableTLS: false,
 		},
 		&http.Gateway{
-			IKO: bc,
+			IKO:    bc,
+			Wallet: walletManager,
 		},
 	)
 	if e != nil {
