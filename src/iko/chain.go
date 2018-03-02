@@ -119,6 +119,26 @@ func (c *MemoryChain) TxChan() <-chan *Transaction {
 }
 
 func (c *MemoryChain) GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]Transaction, error) {
-	// TODO: finish
-	return nil, nil
+	if pageSize == 0 {
+		return nil, fmt.Errorf("Invalid pageSize: %d", pageSize)
+	}
+
+	len := c.Len()
+
+	if startSeq >= len {
+		return nil, fmt.Errorf("Invalid startSeq: %d", startSeq)
+	}
+
+	c.RLock()
+	defer c.RUnlock()
+
+	var (
+		result []Transaction
+	)
+
+	for currentSeq := startSeq; (currentSeq < len && (currentSeq - startSeq) < pageSize); currentSeq++ {
+		result = append(result, c.txs[currentSeq])
+	}
+
+	return result, nil
 }

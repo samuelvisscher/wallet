@@ -19,10 +19,10 @@ func totalPageCount(len, pageSize uint64) uint64 {
 func testChainDBPagination(t *testing.T, chainDB ChainDB, pageSize uint64) {
 	// making sure my totalPageCount logic is working
 	t.Run("totalPageCount", func(t *testing.T) {
-		require.Equal(t, totalPageCount(1, 2), 1, "One item, two items per page, equals one page")
-		require.Equal(t, totalPageCount(0, 2), 0, "Zero items, two items per page, equals zero pages")
-		require.Equal(t, totalPageCount(3, 2), 2, "Three items, two items per page, equals two pages")
-		require.Equal(t, totalPageCount(4, 2), 2, "Four items, two items per page, equals two pages")
+		require.Equal(t, totalPageCount(1, 2), uint64(1), "One item, two items per page, equals one page")
+		require.Equal(t, totalPageCount(0, 2), uint64(0), "Zero items, two items per page, equals zero pages")
+		require.Equal(t, totalPageCount(3, 2), uint64(2), "Three items, two items per page, equals two pages")
+		require.Equal(t, totalPageCount(4, 2), uint64(2), "Four items, two items per page, equals two pages")
 	})
 
 	t.Run("testChainDBPagination", func(t *testing.T) {
