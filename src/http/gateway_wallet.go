@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/kittycash/wallet/src/wallet"
 	"net/http"
+	"strconv"
 )
 
 func walletGateway(mux *http.ServeMux, g *wallet.Manager) error {
@@ -79,6 +80,56 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 		// - 'Content-Type': 'application/json'.
 		// - true & 200   : on success.
 		// - string & http status code : of the error on failure.
-		return nil
+
+		// Send json response if bofy is nil
+		if r.Body == nil {
+			return sendJson(w, http.StatusBadRequest,
+					fmt.Sprintf("Request body missing"))
+		}
+
+		// Parse form data
+		err := r.ParseForm()
+
+		if err != nil {
+			return sendJson(w, http.StatusBadRequest,
+					fmt.Sprintf("Error: %s", err))
+		}
+
+		encrypted, err := strconv.ParseBool(r.PostFormValue("encrypted"))
+		// Options to pass to g.NewWallet()
+		opts := wallet.Options{
+			Label: r.PostFormValue("label"),
+			Seed: r.PostFormValue("seed"),
+			Encrypted: encrypted,
+			Password: r.PostFormValue("password"),
+		}
+
+		// Verify that all values are correct
+		err = opts.Verify()
+
+		// Respond if options are not correct
+		if err != nil {
+			sendJson(w, http.StatusBadRequest,
+				fmt.Sprintf("Message: %s", err))
+		}
+
+		// Get addresses and convert it to int
+		addr, err := strconv.Atoi(r.PostFormValue("addresses"))
+
+		// Don't allow anything other than int
+		if err != nil || addr < 1 {
+			sendJson(w, http.StatusNotAcceptable,
+				fmt.Sprintf("Error: ", err))
+		}
+
+		// Call g.NewWallet
+		err = g.NewWallet(&opts, addr)
+
+		if err != nil {
+			sendJson(w, http.StatusInternalServerError,
+				fmt.Sprintf("Error: %s", err))
+		}
+
+		return sendJson(w, http.StatusOK, true)
 	}
 }
