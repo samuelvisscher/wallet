@@ -195,7 +195,7 @@ type PaginatedTransactions struct {
 
 // totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
 func totalPageCount(len, pageSize uint64) uint64 {
-	if len % pageSize == 0 {
+	if len%pageSize == 0 {
 		return len / pageSize
 	} else {
 		return (len / pageSize) + 1
@@ -204,7 +204,7 @@ func totalPageCount(len, pageSize uint64) uint64 {
 
 func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (PaginatedTransactions, error) {
 	transactions, err := bc.chain.GetTxsOfSeqRange(
-		uint64(perPage * currentPage),
+		uint64(perPage*currentPage),
 		perPage)
 	if err != nil {
 		return PaginatedTransactions{}, err
@@ -212,6 +212,6 @@ func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (Paginated
 	len := bc.chain.Len()
 	return PaginatedTransactions{
 		TotalPageCount: totalPageCount(len, perPage),
-		Transactions: transactions,
+		Transactions:   transactions,
 	}, nil
 }

@@ -2,9 +2,19 @@ package iko
 
 import (
 	"github.com/skycoin/cxo/node"
+	"github.com/skycoin/cxo/skyobject/registry"
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/sirupsen/logrus.v1"
 	"sync"
+)
+
+
+
+var (
+	cxoReg = registry.NewRegistry(func(r *registry.Reg) {
+		r.Register("iko.Transaction", Transaction{})
+
+	})
 )
 
 type CXOChainConfig struct {
@@ -15,7 +25,6 @@ type CXOChainConfig struct {
 	NodeSK             cipher.SecKey
 	MessengerAddresses []string
 	CXOAddress         string
-	CXORPCEnable       bool
 	CXORPCAddress      string
 }
 
@@ -54,8 +63,27 @@ func prepareNode(chain *CXOChain) error {
 	nc.TCP.Listen = chain.c.CXOAddress
 	nc.TCP.Discovery = node.Addresses(chain.c.MessengerAddresses)
 
+	nc.RPC = chain.c.CXORPCAddress
 
+	nc.OnRootReceived = func(c *node.Conn, r *registry.Root) error {
+		// TODO: implement.
+		return nil
+	}
 
-	return nil
+	nc.OnRootFilled = func(n *node.Node, r *registry.Root) {
+		// TODO: push new tx to 'received chan'.
+	}
+
+	nc.OnConnect = func(c *node.Conn) error {
+		// TODO: implement.
+		return nil
+	}
+
+	nc.OnDisconnect = func(c *node.Conn, reason error) {
+		// TODO: implement.
+	}
+
+	var e error
+	chain.node, e = node.NewNode(nc)
+	return e
 }
-

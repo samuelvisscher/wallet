@@ -1,8 +1,8 @@
 package iko
 
 import (
-	"testing"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestTotalPageCount(t *testing.T) {

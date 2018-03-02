@@ -148,7 +148,7 @@ func (c *MemoryChain) GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]Tran
 		result []Transaction
 	)
 
-	for currentSeq := startSeq; (currentSeq < len && (currentSeq - startSeq) < pageSize); currentSeq++ {
+	for currentSeq := startSeq; currentSeq < len && (currentSeq-startSeq) < pageSize; currentSeq++ {
 		result = append(result, c.txs[currentSeq])
 	}
 
