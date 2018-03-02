@@ -21,6 +21,7 @@ type ChainDB interface {
 	Head() (Transaction, error)
 
 	// HeadSeq should obtain the sequence index of the head transaction.
+	// as an invariant, `HeadSeq() == Len() - 1`
 	HeadSeq() uint64
 
 	// Len should obtain the length of the chain.
