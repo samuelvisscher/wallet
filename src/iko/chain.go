@@ -83,7 +83,7 @@ func (c *MemoryChain) AddTx(tx Transaction) error {
 	c.txs = append(c.txs, tx)
 	c.byHash[tx.Hash()] = &c.txs[len(c.txs)-1]
 	go func() {
-		c.txChan <- &c.txs[len(c.txs)-1]
+		c.txChan <- &tx
 	}()
 	return nil
 }
