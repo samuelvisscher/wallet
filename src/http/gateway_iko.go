@@ -23,11 +23,7 @@ func ikoGateway(mux *http.ServeMux, g *iko.BlockChain) error {
 	Handle(mux, "/api/iko/tx/",
 		"GET", getTx(g))
 
-	MultiHandle(mux, []string{
-		"/api/iko/head_tx",
-		"/api/iko/head_tx.json",
-		"/api/iko/head_tx.enc",
-	}, "GET", getHeadTx(g))
+	Handle(mux, "/api/iko/head_tx", "GET", getHeadTx(g))
 
 	MultiHandle(mux, []string{
 		"/api/iko/txs",
@@ -285,15 +281,6 @@ func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 			TotalPageCount: paginated.TotalPageCount,
 			TxReplies: txReplies,
 		}
-		return SwitchExtension(w, p,
-			func() error { return sendJson(w, http.StatusOK, paginatedTxsReply)	},
-			func() error {
-				// TODO: do we need a proper binary encoding for this?
-				encoded, err := json.Marshal(paginatedTxsReply)
-				if err != nil {
-					return err
-				}
-				return sendBin(w, http.StatusOK, encoded)
-			})
+		return sendJson(w, http.StatusOK, paginatedTxsReply)
 	}
 }
