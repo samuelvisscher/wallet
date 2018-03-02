@@ -30,9 +30,9 @@ func ikoGateway(mux *http.ServeMux, g *iko.BlockChain) error {
 	}, "GET", getHeadTx(g))
 
 	MultiHandle(mux, []string{
-		"/api/iko/txes",
-		"/api/iko/txes.json",
-		"/api/iko/txes.enc",
+		"/api/iko/txs",
+		"/api/iko/txs.json",
+		"/api/iko/txs.enc",
 	}, "GET", getPaginatedTxs(g))
 
 	Handle(mux, "/api/iko/inject_tx",
@@ -287,7 +287,7 @@ func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 		if err != nil {
 			return sendJson(w, http.StatusBadRequest, err.Error())
 		}
-		var txReplies []Tx
+		var txReplies []TxReply
 		for _, transaction := range transactions {
 			txReplies = append(txReplies, NewTxReplyOfTransaction(transaction))
 		}
