@@ -83,14 +83,3 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 		return nil
 	}
 }
-
-func sendJson(w http.ResponseWriter, status int, v interface{}) error {
-	data, e := json.Marshal(v)
-	if e != nil {
-		return e
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, e = w.Write(data)
-	return e
-}
