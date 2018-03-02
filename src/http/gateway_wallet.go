@@ -81,7 +81,7 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 		// - true & 200   : on success.
 		// - string & http status code : of the error on failure.
 
-		// Send json response if bofy is nil
+		// Send json response if body is nil
 		if r.Body == nil {
 			return sendJson(w, http.StatusBadRequest,
 					fmt.Sprintf("Request body missing"))
