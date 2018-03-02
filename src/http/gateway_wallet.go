@@ -1,8 +1,8 @@
 package http
 
 import (
-	"net/http"
 	"github.com/kittycash/wallet/src/wallet"
+	"net/http"
 )
 
 func walletGateway(mux *http.ServeMux, g *wallet.Manager) error {
@@ -60,4 +60,3 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 		return nil
 	}
 }
-
