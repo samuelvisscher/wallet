@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/kittycash/wallet/src/wallet"
 	"mime"
-	"strings"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func walletGateway(mux *http.ServeMux, g *wallet.Manager) error {
