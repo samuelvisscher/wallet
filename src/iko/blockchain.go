@@ -187,3 +187,31 @@ func makeTxChecker(bc *BlockChain) TxChecker {
 		return nil
 	}
 }
+
+type PaginatedTransactions struct {
+	TotalPageCount uint64
+	Transactions   []Transaction
+}
+
+// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
+func totalPageCount(len, pageSize uint64) uint64 {
+	if len % pageSize == 0 {
+		return len / pageSize
+	} else {
+		return (len / pageSize) + 1
+	}
+}
+
+func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (PaginatedTransactions, error) {
+	transactions, err := bc.chain.GetTxsOfSeqRange(
+		uint64(perPage * currentPage),
+		perPage)
+	if err != nil {
+		return PaginatedTransactions{}, err
+	}
+	len := bc.chain.Len()
+	return PaginatedTransactions{
+		TotalPageCount: totalPageCount(len, perPage),
+		Transactions: transactions,
+	}, nil
+}

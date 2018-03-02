@@ -21,6 +21,7 @@ type ChainDB interface {
 	Head() (Transaction, error)
 
 	// HeadSeq should obtain the sequence index of the head transaction.
+	// as an invariant, `HeadSeq() == Len() - 1`
 	HeadSeq() uint64
 
 	// Len should obtain the length of the chain.
@@ -43,6 +44,11 @@ type ChainDB interface {
 	// When a transaction is successfully saved to the `ChainDB` implementation,
 	//	we expect to see it getting sent through here too.
 	TxChan() <-chan *Transaction
+
+	// GetTxsOfSeqRange returns a paginated portion of the Transactions.
+	// It will return an error if the pageSize is zero
+	// It will also return an error if startSeq is invalid
+	GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]Transaction, error)
 }
 
 type MemoryChain struct {
@@ -94,7 +100,7 @@ func (c *MemoryChain) AddTx(tx Transaction, check TxChecker) error {
 	c.txs = append(c.txs, tx)
 	c.byHash[tx.Hash()] = &c.txs[len(c.txs)-1]
 	go func() {
-		c.txChan <- &c.txs[len(c.txs)-1]
+		c.txChan <- &tx
 	}()
 	return nil
 }
@@ -121,5 +127,30 @@ func (c *MemoryChain) GetTxOfSeq(seq uint64) (Transaction, error) {
 }
 
 func (c *MemoryChain) TxChan() <-chan *Transaction {
-	return nil
+	return c.txChan
+}
+
+func (c *MemoryChain) GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]Transaction, error) {
+	if pageSize == 0 {
+		return nil, fmt.Errorf("Invalid pageSize: %d", pageSize)
+	}
+
+	len := c.Len()
+
+	if startSeq >= len {
+		return nil, fmt.Errorf("Invalid startSeq: %d", startSeq)
+	}
+
+	c.RLock()
+	defer c.RUnlock()
+
+	var (
+		result []Transaction
+	)
+
+	for currentSeq := startSeq; (currentSeq < len && (currentSeq - startSeq) < pageSize); currentSeq++ {
+		result = append(result, c.txs[currentSeq])
+	}
+
+	return result, nil
 }
