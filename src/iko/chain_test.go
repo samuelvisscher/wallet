@@ -4,27 +4,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/skycoin/skycoin/src/cipher"
 	"fmt"
+	"errors"
 	"testing"
 )
 
-// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
-func totalPageCount(len, pageSize uint64) uint64 {
-	if len % pageSize == 0 {
-		return len / pageSize
-	} else {
-		return (len / pageSize) + 1
-	}
-}
-
 func testChainDBPagination(t *testing.T, chainDB ChainDB, pageSize uint64) {
-	// making sure my totalPageCount logic is working
-	t.Run("totalPageCount", func(t *testing.T) {
-		require.Equal(t, totalPageCount(1, 2), uint64(1), "One item, two items per page, equals one page")
-		require.Equal(t, totalPageCount(0, 2), uint64(0), "Zero items, two items per page, equals zero pages")
-		require.Equal(t, totalPageCount(3, 2), uint64(2), "Three items, two items per page, equals two pages")
-		require.Equal(t, totalPageCount(4, 2), uint64(2), "Four items, two items per page, equals two pages")
-	})
-
 	t.Run("testChainDBPagination", func(t *testing.T) {
 		// demonstrating the pagination flow
 		currentPage := uint64(0)
@@ -59,6 +43,14 @@ func testChainDBPagination(t *testing.T, chainDB ChainDB, pageSize uint64) {
 			currentPage = currentPage + 1
 		}
 	})
+}
+
+func addTxAlwaysApprove(tx *Transaction) error {
+	return nil
+}
+
+func addTxAlwaysReject(tx *Transaction) error {
+	return errors.New("failure")
 }
 
 func runChainDBTest(t *testing.T, chainDB ChainDB) {
@@ -114,7 +106,12 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 
 		firstTransaction := NewGenTx(nil, kittyID, firstSecKey)
 
-		err := chainDB.AddTx(*firstTransaction)
+		t.Run("AddTx_Failure", func(t *testing.T) {
+			err := chainDB.AddTx(*firstTransaction, addTxAlwaysReject)
+			require.NotNil(t, err, "This shouldn't succeed")
+		})
+
+		err := chainDB.AddTx(*firstTransaction, addTxAlwaysApprove)
 
 		require.Nil(t, err, "We should be able to successfully add our first transaction")
 
@@ -127,7 +124,7 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 
 		secondTransaction := NewTransferTx(firstTransaction, kittyID, secondOwnerAddress, firstSecKey)
 
-		err = chainDB.AddTx(*secondTransaction)
+		err = chainDB.AddTx(*secondTransaction, addTxAlwaysApprove)
 
 		require.Nil(t, err, "We should be able to successfully add our second transaction")
 
@@ -192,7 +189,7 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 		// adding a third transaction for an odd number of transactions
 		thirdTransaction := NewTransferTx(secondTransaction, kittyID, firstOwnerAddress, secondSecKey)
 
-		err = chainDB.AddTx(*thirdTransaction)
+		err = chainDB.AddTx(*thirdTransaction, addTxAlwaysApprove)
 
 		require.Nil(t, err, "We should be able to successfully transfer the kitty back to the original owner")
 

@@ -262,17 +262,8 @@ type PaginatedTxsReply struct {
 	TxReplies      []TxReply `json:"transactions"`
 }
 
-// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
-func totalPageCount(len, pageSize uint64) uint64 {
-	if len % pageSize == 0 {
-		return len / pageSize
-	} else {
-		return (len / pageSize) + 1
-	}
-}
-
 func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request, p *Path) {
+	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
 		perPage, err := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
 		if err != nil {
 			return sendJson(w, http.StatusBadRequest, err.Error())
@@ -282,24 +273,23 @@ func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 		if err != nil {
 			return sendJson(w, http.StatusBadRequest, err.Error())
 		}
-		currentSeq := uint64(perPage * currentPage)
-		transactions, err := g.chain.GetTxsOfSeqRange(currentSeq, perPage)
+		paginated, err := g.GetTransactionPage(currentPage, perPage)
 		if err != nil {
 			return sendJson(w, http.StatusBadRequest, err.Error())
 		}
 		var txReplies []TxReply
-		for _, transaction := range transactions {
+		for _, transaction := range paginated.Transactions {
 			txReplies = append(txReplies, NewTxReplyOfTransaction(transaction))
 		}
 		paginatedTxsReply := PaginatedTxsReply{
-			TotalPageCount: totalPageCount(g.chain.Len(), perPage),
+			TotalPageCount: paginated.TotalPageCount,
 			TxReplies: txReplies,
 		}
 		return SwitchExtension(w, p,
 			func() error { return sendJson(w, http.StatusOK, paginatedTxsReply)	},
 			func() error {
 				// TODO: do we need a proper binary encoding for this?
-				encoded, err := http.Marshal(paginatedTxsReply)
+				encoded, err := json.Marshal(paginatedTxsReply)
 				if err != nil {
 					return err
 				}
