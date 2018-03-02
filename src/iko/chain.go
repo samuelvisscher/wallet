@@ -110,5 +110,5 @@ func (c *MemoryChain) GetTxOfSeq(seq uint64) (Transaction, error) {
 }
 
 func (c *MemoryChain) TxChan() <-chan *Transaction {
-	return nil
+	return c.txChan
 }
