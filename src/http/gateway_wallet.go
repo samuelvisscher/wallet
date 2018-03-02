@@ -1,8 +1,10 @@
 package http
 
 import (
-	"net/http"
+	"encoding/json"
+	"fmt"
 	"github.com/kittycash/wallet/src/wallet"
+	"net/http"
 )
 
 func walletGateway(mux *http.ServeMux, g *wallet.Manager) error {
@@ -27,7 +29,17 @@ func refreshWallets(g *wallet.Manager) HandlerFunc {
 		// - 'Content-Type': 'application/json'.
 		// - true & 200   : on success.
 		// - string & 500 : of the error on failure.
-		return nil
+
+		err := g.Refresh()
+
+		// Send json response with 500 status code if error
+		if err != nil {
+			sendJson(w, http.StatusInternalServerError,
+				fmt.Sprintf("Message: '%s'", err))
+		}
+
+		// Send json response with 200 status code if error is nil
+		return sendJson(w, http.StatusOK, true)
 	}
 }
 
@@ -42,7 +54,18 @@ func listWallets(g *wallet.Manager) HandlerFunc {
 		// RESPONSE:
 		// - 'Content-Type': 'application/json'.
 		// - json representation of 'WalletsReply'.
-		return nil
+
+		// Get list of wallets
+		wallets WalletsReply
+		wallets.Wallets = g.ListWallets()
+
+		if stat != nil {
+			// Send json response, status= 200 to user if content was found
+			return sendJson(w, http.StatusOK, wallets.Wallets)
+		} else {
+			// Send json response, status= 204 to user if no content was found
+			return sendJson(w, http.StatusNoContent, wallets)
+		}
 	}
 }
 
@@ -61,3 +84,13 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 	}
 }
 
+func sendJson(w http.ResponseWriter, status int, v interface{}) error {
+	data, e := json.Marshal(v)
+	if e != nil {
+		return e
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, e = w.Write(data)
+	return e
+}
