@@ -6,10 +6,16 @@ import (
 	"sync"
 )
 
+// TxChecker checks the transaction, returns an error when,
+// there is a problem with the transaction, and it shouldn't
+// be added to the blockchain.
+type TxChecker func(tx *Transaction) error
+
 // ChainDB represents where the transactions/blocks are stored.
 // For iko, we combined blocks and transactions to become a single entity.
 // Checks for whether txs are malformed shouldn't happen here.
 type ChainDB interface {
+
 	// Head should obtain the head transaction.
 	// It should return an error when there are no transactions recorded.
 	Head() (Transaction, error)
@@ -20,8 +26,9 @@ type ChainDB interface {
 	// Len should obtain the length of the chain.
 	Len() uint64
 
-	// AddTx should add a transaction to the chain.
-	AddTx(tx Transaction) error
+	// AddTx should add a transaction to the chain after the specified
+	// 'check' returns nil.
+	AddTx(tx Transaction, check TxChecker) error
 
 	// GetTxOfHash should obtain a transaction of a given hash.
 	// It should return an error when the tx doesn't exist.
@@ -76,7 +83,11 @@ func (c *MemoryChain) Len() uint64 {
 	return uint64(len(c.txs))
 }
 
-func (c *MemoryChain) AddTx(tx Transaction) error {
+func (c *MemoryChain) AddTx(tx Transaction, check TxChecker) error {
+	if e := check(&tx); e != nil {
+		return e
+	}
+
 	c.Lock()
 	defer c.Unlock()
 
