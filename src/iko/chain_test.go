@@ -7,6 +7,60 @@ import (
 	"testing"
 )
 
+// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
+func totalPageCount(len, pageSize uint64) uint64 {
+	if len % pageSize == 0 {
+		return len / pageSize
+	} else {
+		return (len / pageSize) + 1
+	}
+}
+
+func testChainDBPagination(t *testing.T, chainDB ChainDB, pageSize uint64) {
+	// making sure my totalPageCount logic is working
+	t.Run("totalPageCount", func(t *testing.T) {
+		require.Equal(t, totalPageCount(1, 2), 1, "One item, two items per page, equals one page")
+		require.Equal(t, totalPageCount(0, 2), 0, "Zero items, two items per page, equals zero pages")
+		require.Equal(t, totalPageCount(3, 2), 2, "Three items, two items per page, equals two pages")
+		require.Equal(t, totalPageCount(4, 2), 2, "Four items, two items per page, equals two pages")
+	})
+
+	t.Run("testChainDBPagination", func(t *testing.T) {
+		// demonstrating the pagination flow
+		currentPage := uint64(0)
+		currentSeq := uint64(0)
+
+		for {
+			// we include this in the loop because in a real life application, the
+			// page count likely will change regularly, so each update will need to
+			// recalculate the maximum page count
+			pageCount := totalPageCount(chainDB.Len(), pageSize)
+			finalPageCount := chainDB.Len() % pageSize
+
+			require.True(t, currentPage <= pageCount, "The current page should never get beyond the total page count")
+
+			if currentPage == pageCount {
+				return // went through all the pages, returning
+			}
+
+			transactions, err := chainDB.GetTxsOfSeqRange(currentSeq, pageSize)
+
+			require.Nil(t, err, "Shouldn't have an error")
+			require.NotNil(t, transactions, "Should receive some transactions")
+
+			if currentPage == (pageCount - 1) {
+				require.Lenf(t, transactions, int(finalPageCount), "The last page should have%d items", finalPageCount)
+			} else {
+				require.Lenf(t, transactions, int(pageSize), "A normal page should have %d items", pageSize)
+			}
+
+			// and now we increment our currentSeq and currentPage
+			currentSeq = currentSeq + pageSize
+			currentPage = currentPage + 1
+		}
+	})
+}
+
 func runChainDBTest(t *testing.T, chainDB ChainDB) {
 	t.Run("Head_NoTransactions", func(t *testing.T) {
 		_, err := chainDB.Head()
@@ -29,7 +83,9 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 	})
 
 	t.Run("withTransactions", func(t *testing.T) {
-		secKey := cipher.SecKey([32]byte{
+		kittyID := KittyID(5)
+
+		firstSecKey := cipher.SecKey([32]byte{
 			3, 4, 5, 6,
 			3, 4, 5, 6,
 			3, 4, 5, 6,
@@ -39,8 +95,9 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 			3, 4, 5, 6,
 			3, 4, 5, 6,
 		})
+		firstOwnerAddress := cipher.AddressFromSecKey(firstSecKey)
 
-		secondOwnerAddress := cipher.AddressFromSecKey(
+		secondSecKey := cipher.SecKey(
 			cipher.SecKey([32]byte{
 				7, 8, 9, 10,
 				7, 8, 9, 10,
@@ -53,7 +110,9 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 				7, 8, 9, 10,
 			}))
 
-		firstTransaction := NewGenTx(nil, KittyID(5), secKey)
+		secondOwnerAddress := cipher.AddressFromSecKey(secondSecKey)
+
+		firstTransaction := NewGenTx(nil, kittyID, firstSecKey)
 
 		err := chainDB.AddTx(*firstTransaction)
 
@@ -66,7 +125,7 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 			require.Equal(t, transaction, *firstTransaction, "Should correctly return the first transaction")
 		})
 
-		secondTransaction := NewTransferTx(firstTransaction, KittyID(5), secondOwnerAddress, secKey)
+		secondTransaction := NewTransferTx(firstTransaction, kittyID, secondOwnerAddress, firstSecKey)
 
 		err = chainDB.AddTx(*secondTransaction)
 
@@ -129,6 +188,29 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 				require.Equal(t, *channelTransaction, transaction, "Should return our transactions through the TxChan() channel in order they were added")
 			}
 		})
+
+		// adding a third transaction for an odd number of transactions
+		thirdTransaction := NewTransferTx(secondTransaction, kittyID, firstOwnerAddress, secondSecKey)
+
+		err = chainDB.AddTx(*thirdTransaction)
+
+		require.Nil(t, err, "We should be able to successfully transfer the kitty back to the original owner")
+
+		t.Run("GetTxsOfSeqRange_BadPageSize", func(t *testing.T) {
+			transactions, err := chainDB.GetTxsOfSeqRange(0, 0)
+
+			require.Nil(t, transactions, "We shouldn't return anything because the caller passed a bad page size")
+			require.NotNil(t, err, "We should get an error for a bad page size")
+		})
+
+		t.Run("GetTxsOfSeqRange_BadStartSeq", func(t *testing.T) {
+			transactions, err := chainDB.GetTxsOfSeqRange(5, 2)
+
+			require.Nil(t, transactions, "We shouldn't return anything because the caller passed a bad start sequence index")
+			require.NotNil(t, err, "We should get an error for a bad start sequence index")
+		})
+
+		testChainDBPagination(t, chainDB, 2)
 	})
 }
 
