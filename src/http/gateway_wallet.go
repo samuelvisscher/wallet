@@ -30,12 +30,10 @@ func refreshWallets(g *wallet.Manager) HandlerFunc {
 		// - true & 200   : on success.
 		// - string & 500 : of the error on failure.
 
-		err := g.Refresh()
-
 		// Send json response with 500 status code if error
-		if err != nil {
+		if e := g.Refresh(); e != nil {
 			sendJson(w, http.StatusInternalServerError,
-				fmt.Sprintf("Message: '%s'", err))
+				fmt.Sprintf("Message: '%s'", e))
 		}
 
 		// Send json response with 200 status code if error is nil
@@ -87,15 +85,17 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 					fmt.Sprintf("Request body missing"))
 		}
 
-		// Parse form data
-		err := r.ParseForm()
-
-		if err != nil {
+		if e := r.ParseForm(); e != nil {
 			return sendJson(w, http.StatusBadRequest,
-					fmt.Sprintf("Error: %s", err))
+					fmt.Sprintf("Error: %s", e))
 		}
 
 		encrypted, err := strconv.ParseBool(r.PostFormValue("encrypted"))
+
+		if err != nil {
+			sendJson(w, http.StatusBadRequest,
+			fmt.Sprintf("Error: %s", err))
+		}
 		// Options to pass to g.NewWallet()
 		opts := wallet.Options{
 			Label: r.PostFormValue("label"),
@@ -104,11 +104,11 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 			Password: r.PostFormValue("password"),
 		}
 
-		// Verify that all values are correct
-		err = opts.Verify()
-
-		// Respond if options are not correct
-		if err != nil {
+		/**
+		 * Verify that all values are correct
+		 * Respond if options are not correct
+		 */
+		if e := opts.Verify; e != nil {
 			sendJson(w, http.StatusBadRequest,
 				fmt.Sprintf("Message: %s", err))
 		}
@@ -122,12 +122,9 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 				fmt.Sprintf("Error: ", err))
 		}
 
-		// Call g.NewWallet
-		err := g.NewWallet(&opts, addr)
-
-		if err != nil {
+		if e := g.NewWallet(&opts, addr); e != nil {
 			sendJson(w, http.StatusInternalServerError,
-				fmt.Sprintf("Error: %s", err))
+				fmt.Sprintf("Error: %s", e))
 		}
 
 		return sendJson(w, http.StatusOK, true)
