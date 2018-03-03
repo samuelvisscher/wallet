@@ -153,34 +153,63 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
-	var prev *Transaction
-
-	if temp, e := bc.chain.Head(); e == nil {
-		prev = &temp
-	}
-
-	if e := tx.Verify(prev); e != nil {
-		return e
-	}
-
-	if tx.IsKittyGen(bc.c.CreatorPK) {
-		bc.log.
-			WithField("kitty_id", tx.KittyID).
-			WithField("address", tx.To.String()).
-			Debug("adding kitty to state")
-
-		if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
+	var check = TxChecker(func(tx *Transaction) error {
+		var prev *Transaction
+		if temp, e := bc.chain.Head(); e == nil {
+			prev = &temp
+		}
+		if e := tx.Verify(prev); e != nil {
 			return e
 		}
+		if tx.IsKittyGen(bc.c.CreatorPK) {
+			bc.log.
+				WithField("kitty_id", tx.KittyID).
+				WithField("address", tx.To.String()).
+				Debug("gen_tx")
+
+			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
+				return e
+			}
+		} else {
+			bc.log.
+				WithField("kitty_id", tx.KittyID).
+				WithField("from_address", tx.From.String()).
+				WithField("to_address", tx.To.String()).
+				Debug("move_tx")
+			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
+				return e
+			}
+		}
+		return nil
+	})
+
+	return bc.chain.AddTx(*tx, check)
+}
+
+type PaginatedTransactions struct {
+	TotalPageCount uint64
+	Transactions   []Transaction
+}
+
+// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
+func totalPageCount(len, pageSize uint64) uint64 {
+	if len % pageSize == 0 {
+		return len / pageSize
 	} else {
-		if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
-			return e
-		}
+		return (len / pageSize) + 1
 	}
+}
 
-	if e := bc.chain.AddTx(*tx); e != nil {
-		panic(e)
+func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (PaginatedTransactions, error) {
+	transactions, err := bc.chain.GetTxsOfSeqRange(
+		uint64(perPage * currentPage),
+		perPage)
+	if err != nil {
+		return PaginatedTransactions{}, err
 	}
-
-	return nil
+	len := bc.chain.Len()
+	return PaginatedTransactions{
+		TotalPageCount: totalPageCount(len, perPage),
+		Transactions: transactions,
+	}, nil
 }
