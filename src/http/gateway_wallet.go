@@ -59,7 +59,7 @@ func listWallets(g *wallet.Manager) HandlerFunc {
 
 		if listWall.Wallets != nil {
 			// Send json response, status= 200 to user if content was found
-			return sendJson(w, http.StatusOK, listWall.Wallets)
+			return sendJson(w, http.StatusOK, listWall)
 		} else {
 			// Send json response, status= 204 to user if no content was found
 			return sendJson(w, http.StatusNoContent, listWall)
@@ -82,7 +82,7 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 		// Send json response if body is nil
 		if r.Body == nil {
 			return sendJson(w, http.StatusBadRequest,
-					fmt.Sprintf("Request body missing"))
+					fmt.Sprint("Request body missing"))
 		}
 
 		if e := r.ParseForm(); e != nil {
@@ -119,7 +119,7 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 		// Don't allow anything other than int
 		if err != nil || addr < 1 {
 			sendJson(w, http.StatusNotAcceptable,
-				fmt.Sprintf("Error: ", err))
+				fmt.Sprintf("Error: %s", err))
 		}
 
 		if e := g.NewWallet(&opts, addr); e != nil {
