@@ -67,7 +67,7 @@ func (bc *BlockChain) InitState() error {
 	var prev *Transaction
 	for i := uint64(1); i < bc.chain.Len(); i++ {
 
-		// Get transaction.
+		// Val transaction.
 		tx, e := bc.chain.GetTxOfSeq(i)
 		if e != nil {
 			return e

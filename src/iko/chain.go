@@ -20,10 +20,6 @@ type ChainDB interface {
 	// It should return an error when there are no transactions recorded.
 	Head() (Transaction, error)
 
-	// HeadSeq should obtain the sequence index of the head transaction.
-	// as an invariant, `HeadSeq() == Len() - 1`
-	HeadSeq() uint64
-
 	// Len should obtain the length of the chain.
 	Len() uint64
 
@@ -73,13 +69,6 @@ func (c *MemoryChain) Head() (Transaction, error) {
 		return Transaction{}, errors.New("no transactions")
 	}
 	return c.txs[len(c.txs)-1], nil
-}
-
-func (c *MemoryChain) HeadSeq() uint64 {
-	c.RLock()
-	defer c.RUnlock()
-
-	return uint64(len(c.txs)) - 1
 }
 
 func (c *MemoryChain) Len() uint64 {

@@ -279,7 +279,7 @@ func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 		}
 		paginatedTxsReply := PaginatedTxsReply{
 			TotalPageCount: paginated.TotalPageCount,
-			TxReplies: txReplies,
+			TxReplies:      txReplies,
 		}
 		return sendJson(w, http.StatusOK, paginatedTxsReply)
 	}
