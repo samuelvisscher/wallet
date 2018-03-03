@@ -26,17 +26,6 @@
   revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/kittycash/wallet"
-  packages = [
-    "legacy/ex24/store",
-    "src/http",
-    "src/iko",
-    "src/wallet"
-  ]
-  revision = "a7ae0589293d198e54006a6c2893f8f3eea60510"
-
-[[projects]]
   name = "github.com/klauspost/cpuid"
   packages = ["."]
   revision = "ae7887de9fa5d2db4eaa8174a7eff2c1ac00f2da"
@@ -80,10 +69,10 @@
     "data/cxds",
     "data/idxdb",
     "node",
+    "node/gnet",
     "node/log",
     "node/msg",
     "skyobject",
-    "skyobject/registry",
     "skyobject/statutil"
   ]
   revision = "f87f9c197597bc78ec301d32b4678f50e9f52726"
@@ -161,6 +150,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c3bc57fdcb4e28791d52b8cbbb007d7a998f798ac8ab36221cc3efec34355f2a"
+  inputs-digest = "3dc20a43efb29408d046a24d78bde70ebc5b2ed647aa70c8fc9577def411434a"
   solver-name = "gps-cdcl"
   solver-version = 1
