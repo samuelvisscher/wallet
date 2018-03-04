@@ -1,15 +1,15 @@
 package http
 
 import (
+	_ "errors"
 	"fmt"
-	_"errors"
-	"github.com/skycoin/skycoin/src/cipher"
-	_"github.com/stretchr/testify/require"
-	_"github.com/kittycash/wallet/src/iko"
+	_ "github.com/kittycash/wallet/src/iko"
 	"github.com/kittycash/wallet/src/wallet"
-	"testing"
+	"github.com/skycoin/skycoin/src/cipher"
+	_ "github.com/stretchr/testify/require"
 	"net/http"
-	_"sync"
+	_ "sync"
+	"testing"
 )
 
 func runWalletGatewayTest(t *testing.T, wallet *wallet.Manager) {
@@ -56,20 +56,20 @@ func TestWalletGateway(t *testing.T) {
 		fmt.Println(err, "2")
 	}
 	fmt.Println(entry2)
-/*
-	wallet.Manager{
-		mux: sync.Mutex,
-		label: ["Just", "A", "String"],
-		wallets map
-	}
-	manager, err := wallet.NewManager()
+	/*
+		wallet.Manager{
+			mux: sync.Mutex,
+			label: ["Just", "A", "String"],
+			wallets map
+		}
+		manager, err := wallet.NewManager()
 
-	if err != nil {
-		errors.New("Cannot create manager")
-		fmt.Println(manager)
-	} else {
-		fmt.Println("It works")
-		runWalletGatewayTest(t, manager)
-	}
+		if err != nil {
+			errors.New("Cannot create manager")
+			fmt.Println(manager)
+		} else {
+			fmt.Println("It works")
+			runWalletGatewayTest(t, manager)
+		}
 	*/
 }

@@ -124,9 +124,9 @@ func (c *MemoryChain) GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]Tran
 		return nil, fmt.Errorf("Invalid pageSize: %d", pageSize)
 	}
 
-	len := c.Len()
+	cLen := c.Len()
 
-	if startSeq >= len {
+	if startSeq >= cLen {
 		return nil, fmt.Errorf("Invalid startSeq: %d", startSeq)
 	}
 
@@ -137,7 +137,7 @@ func (c *MemoryChain) GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]Tran
 		result []Transaction
 	)
 
-	for currentSeq := startSeq; currentSeq < len && (currentSeq-startSeq) < pageSize; currentSeq++ {
+	for currentSeq := startSeq; currentSeq < cLen && (currentSeq-startSeq) < pageSize; currentSeq++ {
 		result = append(result, c.txs[currentSeq])
 	}
 

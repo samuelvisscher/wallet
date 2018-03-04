@@ -6,7 +6,6 @@ import (
 	"github.com/kittycash/wallet/src/iko"
 	"github.com/kittycash/wallet/src/wallet"
 	"net/http"
-	"path"
 	"strings"
 )
 
@@ -58,16 +57,83 @@ func MultiHandle(mux *http.ServeMux, patterns []string, method string, handler H
 	}
 }
 
-func SwitchExtension(w http.ResponseWriter, p *Path, jsonAction, encAction func() error) error {
-	switch p.Extension {
-	case "", ".json":
-		return jsonAction()
-	case ".enc", ".bin":
-		return encAction()
-	default:
-		return sendJson(w, http.StatusMethodNotAllowed,
-			fmt.Sprintf("invalid URL extension '%s'", p.Extension))
+/*
+	<<< CONTENT TYPE HEADER >>>
+*/
+
+type ContTypeVal string
+
+const (
+	ContTypeKey              = "Content-Type"
+	CtApplicationJson        = ContTypeVal("application/json")
+	CtApplicationOctetStream = ContTypeVal("application/octet-stream")
+	CtApplicationForm        = ContTypeVal("application/x-www-form-urlencoded")
+)
+
+type ContTypeActions map[ContTypeVal]func() (bool, error)
+
+func SwitchContType(w http.ResponseWriter, r *http.Request, m ContTypeActions) (bool, error) {
+	v := ContTypeVal(r.Header.Get(ContTypeKey))
+	action, ok := m[v]
+	if !ok {
+		return false, sendJson(w, http.StatusBadRequest,
+			fmt.Sprintf("invalid '%s' query of '%s'", ReqQueryKey, v))
 	}
+	return action()
+}
+
+/*
+	<<< REQUEST QUERY >>>
+*/
+
+type ReqQueryVal string
+
+const (
+	ReqQueryKey = "request"
+	RqHash      = ReqQueryVal("hash")
+	RqSeq       = ReqQueryVal("seq")
+)
+
+type ReqQueryActions map[ReqQueryVal]func() (bool, error)
+
+func SwitchReqQuery(w http.ResponseWriter, r *http.Request, defVal ReqQueryVal, m ReqQueryActions) (bool, error) {
+	v := ReqQueryVal(r.URL.Query().Get(ReqQueryKey))
+	if v == "" {
+		v = defVal
+	}
+	action, ok := m[v]
+	if !ok {
+		return false, sendJson(w, http.StatusBadRequest,
+			fmt.Sprintf("invalid '%s' query of '%s'", ReqQueryKey, v))
+	}
+	return action()
+}
+
+/*
+	<<< TYPE QUERY >>>
+*/
+
+type TypeQueryVal string
+
+const (
+	TypeQueryKey = "type"
+	TqJson       = TypeQueryVal("json")
+	TqEnc        = TypeQueryVal("enc")
+)
+
+type TypeQueryActions map[TypeQueryVal]func() error
+
+func SwitchTypeQuery(w http.ResponseWriter, r *http.Request, defVal TypeQueryVal, m TypeQueryActions) error {
+	v := TypeQueryVal(r.URL.Query().Get(TypeQueryKey))
+	if v == "" {
+		v = defVal
+	}
+	action, ok := m[v]
+	if !ok {
+		return sendJson(w, http.StatusBadRequest,
+			fmt.Sprintf("invalid '%s' query of '%s'", TypeQueryKey, v))
+	}
+	return action()
 }
 
 /*
@@ -99,7 +165,6 @@ func sendBin(w http.ResponseWriter, status int, data []byte) error {
 type Path struct {
 	EscapedPath string
 	SplitPath   []string
-	Extension   string
 	Base        string
 }
 
@@ -107,14 +172,11 @@ func NewPath(r *http.Request) *Path {
 	var (
 		escPath   = r.URL.EscapedPath()
 		splitPath = strings.Split(escPath, "/")
-		baseAll   = splitPath[len(splitPath)-1]
-		ext       = path.Ext(baseAll)
-		base      = strings.TrimSuffix(baseAll, ext)
+		base      = splitPath[len(splitPath)-1]
 	)
 	return &Path{
 		EscapedPath: escPath,
 		SplitPath:   splitPath,
-		Extension:   ext,
 		Base:        base,
 	}
 }
