@@ -12,28 +12,13 @@ import (
 	"strconv"
 )
 
-func ikoGateway(mux *http.ServeMux, g *iko.BlockChain) error {
-
-	Handle(mux, "/api/iko/kitty/",
-		"GET", getKitty(g))
-
-	Handle(mux, "/api/iko/address/",
-		"GET", getAddress(g))
-
-	Handle(mux, "/api/iko/tx/",
-		"GET", getTx(g))
-
-	Handle(mux, "/api/iko/head_tx", "GET", getHeadTx(g))
-
-	MultiHandle(mux, []string{
-		"/api/iko/txs",
-		"/api/iko/txs.json",
-		"/api/iko/txs.enc",
-	}, "GET", getPaginatedTxs(g))
-
-	Handle(mux, "/api/iko/inject_tx",
-		"POST", injectTx(g))
-
+func ikoGateway(m *http.ServeMux, g *iko.BlockChain) error {
+	Handle(m, "/api/iko/kitty/", "GET", getKitty(g))
+	Handle(m, "/api/iko/address/", "GET", getAddress(g))
+	Handle(m, "/api/iko/tx/", "GET", getTx(g))
+	Handle(m, "/api/iko/head_tx", "GET", getHeadTx(g))
+	Handle(m, "/api/iko/txs", "GET", getPaginatedTxs(g))
+	Handle(m, "/api/iko/inject_tx", "POST", injectTx(g))
 	return nil
 }
 
@@ -55,8 +40,8 @@ func getKitty(g *iko.BlockChain) HandlerFunc {
 			return sendJson(w, http.StatusNotFound,
 				fmt.Sprintf("kitty of id '%s' not found", kittyID))
 		}
-		return SwitchExtension(w, p,
-			func() error {
+		return SwitchTypeQuery(w, r, TqJson, TypeQueryActions{
+			TqJson: func() error {
 				return sendJson(w, http.StatusOK,
 					KittyReply{
 						KittyID:      kittyID,
@@ -64,11 +49,11 @@ func getKitty(g *iko.BlockChain) HandlerFunc {
 						Transactions: kState.Transactions.ToStringArray(),
 					})
 			},
-			func() error {
+			TqEnc: func() error {
 				return sendBin(w, http.StatusOK,
 					kState.Serialize())
 			},
-		)
+		})
 	}
 }
 
@@ -86,8 +71,8 @@ func getAddress(g *iko.BlockChain) HandlerFunc {
 				e.Error())
 		}
 		aState := g.GetAddressState(address)
-		return SwitchExtension(w, p,
-			func() error {
+		return SwitchTypeQuery(w, r, TqJson, TypeQueryActions{
+			TqJson: func() error {
 				return sendJson(w, http.StatusOK,
 					AddressReply{
 						Address:      address.String(),
@@ -95,11 +80,11 @@ func getAddress(g *iko.BlockChain) HandlerFunc {
 						Transactions: aState.Transactions.ToStringArray(),
 					})
 			},
-			func() error {
+			TqEnc: func() error {
 				return sendBin(w, http.StatusOK,
 					aState.Serialize())
 			},
-		)
+		})
 	}
 }
 
@@ -144,47 +129,45 @@ func NewTxReplyOfTransaction(tx iko.Transaction) TxReply {
 func getTx(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
 		var tx iko.Transaction
-		switch reqVal := r.URL.Query().Get("request"); reqVal {
-		case "", "hash":
-			txHash, e := cipher.SHA256FromHex(p.Base)
-			if e != nil {
-				return sendJson(w, http.StatusBadRequest,
-					e.Error())
-			}
-			if tx, e = g.GetTxOfHash(iko.TxHash(txHash)); e != nil {
-				return sendJson(w, http.StatusNotFound,
-					e.Error())
-			}
-		case "seq", "sequence":
-			seq, e := strconv.ParseUint(p.Base, 10, 64)
-			if e != nil {
-				return sendJson(w, http.StatusBadRequest,
-					e.Error())
-			}
-			if tx, e = g.GetTxOfSeq(seq); e != nil {
-				return sendJson(w, http.StatusNotFound,
-					e.Error())
-			}
-		default:
-			return sendJson(w, http.StatusBadRequest,
-				fmt.Sprintf("invalid request query value of '%s', expected '%s'",
-					reqVal, []string{"", "hash", "seq"}))
+		ok, e := SwitchReqQuery(w, r, RqHash, ReqQueryActions{
+			RqHash: func() (bool, error) {
+				txHash, e := cipher.SHA256FromHex(p.Base)
+				if e != nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						e.Error())
+				}
+				if tx, e = g.GetTxOfHash(iko.TxHash(txHash)); e != nil {
+					return false, sendJson(w, http.StatusNotFound,
+						e.Error())
+				}
+				return true, nil
+			},
+			RqSeq: func() (bool, error) {
+				seq, e := strconv.ParseUint(p.Base, 10, 64)
+				if e != nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						e.Error())
+				}
+				if tx, e = g.GetTxOfSeq(seq); e != nil {
+					return false, sendJson(w, http.StatusNotFound,
+						e.Error())
+				}
+				return true, nil
+			},
+		})
+		if !ok {
+			return e
 		}
-		return SwitchExtension(w, p,
-			func() error {
+		return SwitchTypeQuery(w, r, TqJson, TypeQueryActions{
+			TqJson: func() error {
 				return sendJson(w, http.StatusOK, NewTxReplyOfTransaction(tx))
 			},
-			func() error {
+			TqEnc: func() error {
 				return sendBin(w, http.StatusOK,
 					tx.Serialize())
 			},
-		)
+		})
 	}
-}
-
-type HeadHashReply struct {
-	Seq  uint64 `json:"seq"`
-	Hash string `json:"hash"`
 }
 
 func getHeadTx(g *iko.BlockChain) HandlerFunc {
@@ -194,15 +177,16 @@ func getHeadTx(g *iko.BlockChain) HandlerFunc {
 			return sendJson(w, http.StatusNotFound,
 				e.Error())
 		}
-		return SwitchExtension(w, p,
-			func() error {
-				return sendJson(w, http.StatusOK, NewTxReplyOfTransaction(tx))
+		return SwitchTypeQuery(w, r, TqJson, TypeQueryActions{
+			TqJson: func() error {
+				return sendJson(w, http.StatusOK,
+					NewTxReplyOfTransaction(tx))
 			},
-			func() error {
+			TqEnc: func() error {
 				return sendBin(w, http.StatusOK,
 					tx.Serialize())
 			},
-		)
+		})
 	}
 }
 
@@ -260,18 +244,21 @@ type PaginatedTxsReply struct {
 
 func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		perPage, err := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
-		if err != nil {
-			return sendJson(w, http.StatusBadRequest, err.Error())
+		perPage, e := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
+		if e != nil {
+			return sendJson(w, http.StatusBadRequest,
+				e.Error())
 		}
-		currentPage, err := strconv.ParseUint(
+		currentPage, e := strconv.ParseUint(
 			r.URL.Query().Get("current_page"), 10, 64)
-		if err != nil {
-			return sendJson(w, http.StatusBadRequest, err.Error())
+		if e != nil {
+			return sendJson(w, http.StatusBadRequest,
+				e.Error())
 		}
-		paginated, err := g.GetTransactionPage(currentPage, perPage)
-		if err != nil {
-			return sendJson(w, http.StatusBadRequest, err.Error())
+		paginated, e := g.GetTransactionPage(currentPage, perPage)
+		if e != nil {
+			return sendJson(w, http.StatusBadRequest,
+				e.Error())
 		}
 		var txReplies []TxReply
 		for _, transaction := range paginated.Transactions {
@@ -279,8 +266,9 @@ func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 		}
 		paginatedTxsReply := PaginatedTxsReply{
 			TotalPageCount: paginated.TotalPageCount,
-			TxReplies: txReplies,
+			TxReplies:      txReplies,
 		}
-		return sendJson(w, http.StatusOK, paginatedTxsReply)
+		return sendJson(w, http.StatusOK,
+			paginatedTxsReply)
 	}
 }

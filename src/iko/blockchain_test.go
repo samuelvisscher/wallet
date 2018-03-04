@@ -1,11 +1,11 @@
 package iko
 
 import (
-	"testing"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
-func TesttotalPageCount(t *testing.T) {
+func TestTotalPageCount(t *testing.T) {
 	require.Equal(t, totalPageCount(1, 2), uint64(1),
 		"One item, two items per page, equals one page")
 	require.Equal(t, totalPageCount(0, 2), uint64(0),

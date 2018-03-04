@@ -54,7 +54,7 @@ func (p Prefix) Encrypted() bool {
 }
 
 /*
-	<<< Nonce >>>
+	<<< MasterNonce >>>
 */
 
 func EmptyNonce() []byte {

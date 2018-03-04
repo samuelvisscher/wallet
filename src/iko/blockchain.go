@@ -67,12 +67,12 @@ func (bc *BlockChain) InitState() error {
 	var prev *Transaction
 	for i := uint64(1); i < bc.chain.Len(); i++ {
 
-		// Get transaction.
+		// Val transaction.
 		tx, e := bc.chain.GetTxOfSeq(i)
 		if e != nil {
 			return e
 		}
-		bc.log.WithField("tx", tx.String()).Debugf("InitState (%d)", i)
+		bc.log.WithField("tx", tx.String()).Infof("InitState (%d)", i)
 
 		// Check hash, seq and sig of tx.
 		if e := tx.Verify(prev); e != nil {
@@ -153,7 +153,11 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
-	var check = TxChecker(func(tx *Transaction) error {
+	return bc.chain.AddTx(*tx, MakeTxChecker(bc))
+}
+
+func MakeTxChecker(bc *BlockChain) TxChecker {
+	return func(tx *Transaction) error {
 		var prev *Transaction
 		if temp, e := bc.chain.Head(); e == nil {
 			prev = &temp
@@ -181,9 +185,7 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 			}
 		}
 		return nil
-	})
-
-	return bc.chain.AddTx(*tx, check)
+	}
 }
 
 type PaginatedTransactions struct {
@@ -193,7 +195,7 @@ type PaginatedTransactions struct {
 
 // totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
 func totalPageCount(len, pageSize uint64) uint64 {
-	if len % pageSize == 0 {
+	if len%pageSize == 0 {
 		return len / pageSize
 	} else {
 		return (len / pageSize) + 1
@@ -202,14 +204,14 @@ func totalPageCount(len, pageSize uint64) uint64 {
 
 func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (PaginatedTransactions, error) {
 	transactions, err := bc.chain.GetTxsOfSeqRange(
-		uint64(perPage * currentPage),
+		uint64(perPage*currentPage),
 		perPage)
 	if err != nil {
 		return PaginatedTransactions{}, err
 	}
-	len := bc.chain.Len()
+	cLen := bc.chain.Len()
 	return PaginatedTransactions{
-		TotalPageCount: totalPageCount(len, perPage),
-		Transactions: transactions,
+		TotalPageCount: totalPageCount(cLen, perPage),
+		Transactions:   transactions,
 	}, nil
 }

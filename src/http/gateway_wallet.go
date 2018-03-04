@@ -7,36 +7,23 @@ import (
 	"strconv"
 )
 
-func walletGateway(mux *http.ServeMux, g *wallet.Manager) error {
-
-	Handle(mux, "/api/wallets/refresh",
-		"GET", refreshWallets(g))
-
-	Handle(mux, "/api/wallets/list",
-		"GET", listWallets(g))
-
-	Handle(mux, "/api/wallets/new",
-		"POST", newWallet(g))
-
+func walletGateway(m *http.ServeMux, g *wallet.Manager) error {
+	Handle(m, "/api/wallets/refresh", "GET", refreshWallets(g))
+	Handle(m, "/api/wallets/list", "GET", listWallets(g))
+	Handle(m, "/api/wallets/new", "POST", newWallet(g))
+	Handle(m, "/api/wallets/delete", "POST", deleteWallet(g))
+	Handle(m, "/api/wallets/get", "POST", getWallet(g))
 	return nil
 }
 
 func refreshWallets(g *wallet.Manager) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		// TODO: implement.
-		// CALLS: 'g.Refresh()'.
-		// RESPONSE:
-		// - 'Content-Type': 'application/json'.
-		// - true & 200   : on success.
-		// - string & 500 : of the error on failure.
-
-		// Send json response with 500 status code if error
+		// Send json response with 500 status code if error.
 		if e := g.Refresh(); e != nil {
 			sendJson(w, http.StatusInternalServerError,
-				fmt.Sprintf("Message: '%s'", e))
+				fmt.Sprintf("message: '%s'", e))
 		}
-
-		// Send json response with 200 status code if error is nil
+		// Send json response with 200 status code if error is nil.
 		return sendJson(w, http.StatusOK, true)
 	}
 }
@@ -47,86 +34,146 @@ type WalletsReply struct {
 
 func listWallets(g *wallet.Manager) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		// TODO: implement.
-		// CALLS: 'g.ListWallets()'.
-		// RESPONSE:
-		// - 'Content-Type': 'application/json'.
-		// - json representation of 'WalletsReply'.
-
-		// Get list of listWall
-		var listWall WalletsReply
-		listWall.Wallets = g.ListWallets()
-
-		if listWall.Wallets != nil {
-			// Send json response, status= 200 to user if content was found
-			return sendJson(w, http.StatusOK, listWall)
+		// Get list of listWall.
+		wallets := WalletsReply{
+			Wallets: g.ListWallets(),
+		}
+		if wallets.Wallets != nil {
+			// Send json response, status= 200 to user if content was found.
+			return sendJson(w, http.StatusOK, wallets)
 		} else {
-			// Send json response, status= 204 to user if no content was found
-			return sendJson(w, http.StatusNoContent, listWall)
+			// Send json response, status= 204 to user if no content was found.
+			return sendJson(w, http.StatusNoContent, wallets)
 		}
 	}
 }
 
 func newWallet(g *wallet.Manager) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		// TODO: implement.
-		// CALLS: 'g.NewWallet()'.
-		// REQUEST:
-		// - 'Content-Type': 'application/x-www-form-urlencoded'.
-		// - Check actual function for all key-values.
-		// RESPONSE:
-		// - 'Content-Type': 'application/json'.
-		// - true & 200   : on success.
-		// - string & http status code : of the error on failure.
 
-		// Send json response if body is nil
-		if r.Body == nil {
-			return sendJson(w, http.StatusBadRequest,
-					fmt.Sprint("Request body missing"))
-		}
+		// Only allow 'Content-Type' of 'application/x-www-form-urlencoded'.
+		_, e := SwitchContType(w, r, ContTypeActions{
+			CtApplicationForm: func() (bool, error) {
+				var (
+					vEncrypted = r.PostFormValue("encrypted")
+					vLabel     = r.PostFormValue("label")
+					vSeed      = r.PostFormValue("seed")
+					vPassword  = r.PostFormValue("password")
+					vAddresses = r.PostFormValue("addresses")
+				)
 
-		if e := r.ParseForm(); e != nil {
-			return sendJson(w, http.StatusBadRequest,
-					fmt.Sprintf("Error: %s", e))
-		}
+				// Send json response if body is nil.
+				if r.Body == nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						fmt.Sprint("request body missing"))
+				}
 
-		encrypted, err := strconv.ParseBool(r.PostFormValue("encrypted"))
+				if e := r.ParseForm(); e != nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						fmt.Sprintf("Error: %s", e))
+				}
 
-		if err != nil {
-			sendJson(w, http.StatusBadRequest,
-			fmt.Sprintf("Error: %s", err))
-		}
-		// Options to pass to g.NewWallet()
-		opts := wallet.Options{
-			Label: r.PostFormValue("label"),
-			Seed: r.PostFormValue("seed"),
-			Encrypted: encrypted,
-			Password: r.PostFormValue("password"),
-		}
+				encrypted, e := strconv.ParseBool(vEncrypted)
+				if e != nil {
+					sendJson(w, http.StatusBadRequest,
+						fmt.Sprintf("Error: %s", e))
+				}
 
-		/**
-		 * Verify that all values are correct
-		 * Respond if options are not correct
-		 */
-		if e := opts.Verify; e != nil {
-			sendJson(w, http.StatusBadRequest,
-				fmt.Sprintf("Message: %s", err))
-		}
+				// Options to pass to g.NewWallet()
+				opts := wallet.Options{
+					Label:     vLabel,
+					Seed:      vSeed,
+					Encrypted: encrypted,
+					Password:  vPassword,
+				}
 
-		// Get addresses and convert it to int
-		addr, err := strconv.Atoi(r.PostFormValue("addresses"))
+				/**
+				 * Verify that all values are correct
+				 * Respond if options are not correct
+				 */
+				if e := opts.Verify; e != nil {
+					sendJson(w, http.StatusBadRequest,
+						fmt.Sprintf("Message: %s", e))
+				}
 
-		// Don't allow anything other than int
-		if err != nil || addr < 1 {
-			sendJson(w, http.StatusNotAcceptable,
-				fmt.Sprintf("Error: %s", err))
-		}
+				// Get addresses and convert it to int.
+				addr, e := strconv.Atoi(vAddresses)
 
-		if e := g.NewWallet(&opts, addr); e != nil {
-			sendJson(w, http.StatusInternalServerError,
-				fmt.Sprintf("Error: %s", e))
-		}
+				// Don't allow anything other than int.
+				if e != nil || addr < 1 {
+					sendJson(w, http.StatusNotAcceptable,
+						fmt.Sprintf("Error: %s", e))
+				}
 
-		return sendJson(w, http.StatusOK, true)
+				if e := g.NewWallet(&opts, addr); e != nil {
+					sendJson(w, http.StatusInternalServerError,
+						fmt.Sprintf("Error: %s", e))
+				}
+
+				return true, sendJson(w, http.StatusOK, true)
+			},
+		})
+		return e
+	}
+}
+
+func deleteWallet(g *wallet.Manager) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
+
+		// Only allow 'Content-Type' of 'application/x-www-form-urlencoded'.
+		_, e := SwitchContType(w, r, ContTypeActions{
+			CtApplicationForm: func() (bool, error) {
+				var (
+					vLabel = r.PostFormValue("label")
+				)
+				if r.Body == nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						fmt.Sprint("request body missing"))
+				}
+				if e := g.DeleteWallet(vLabel); e != nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						fmt.Sprintf("Error: failed to delete wallet of label '%s': %v",
+							vLabel, e))
+				}
+				return true, sendJson(w, http.StatusOK, true)
+			},
+		})
+		return e
+	}
+}
+
+func getWallet(g *wallet.Manager) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
+
+		// Only allow 'Content-Type' of 'application/x-www-form-urlencoded'.
+		_, e := SwitchContType(w, r, ContTypeActions{
+			CtApplicationForm: func() (bool, error) {
+				var (
+					vLabel     = r.PostFormValue("label")
+					vPassword  = r.PostFormValue("password")  // Optional.
+					vAddresses = r.PostFormValue("addresses") // Optional.
+				)
+				if r.Body == nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						fmt.Sprint("request body missing"))
+				}
+				var addresses int
+				if vAddresses != "" {
+					var e error
+					addresses, e = strconv.Atoi(vAddresses)
+					if e != nil {
+						return false, sendJson(w, http.StatusBadRequest,
+							fmt.Sprintf("Error: %s", e))
+					}
+				}
+				fw, e := g.DisplayWallet(vLabel, vPassword, addresses)
+				if e != nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						fmt.Sprintf("Error: %v", e))
+				}
+				return true, sendJson(w, http.StatusOK, fw)
+			},
+		})
+		return e
 	}
 }

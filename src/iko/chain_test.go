@@ -1,10 +1,10 @@
 package iko
 
 import (
-	"github.com/stretchr/testify/require"
-	"github.com/skycoin/skycoin/src/cipher"
-	"fmt"
 	"errors"
+	"fmt"
+	"github.com/skycoin/skycoin/src/cipher"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -163,7 +163,7 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 		for idx, transaction := range transactions {
 			// our test label is GetTxOfHash_Success_XX, where 01 is
 			// firstTransaction, 02 is secondTransaction, etc
-			testLabel := fmt.Sprintf("GetTxOfHash_Success_%2.2d", idx + 1)
+			testLabel := fmt.Sprintf("GetTxOfHash_Success_%2.2d", idx+1)
 
 			t.Run(testLabel, func(t *testing.T) {
 				reqTransaction, err := chainDB.GetTxOfHash(transaction.Hash())
@@ -176,7 +176,7 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 
 		for idx, transaction := range transactions {
 			// same as above
-			testLabel := fmt.Sprintf("GetTxOfSeq_Success_%2.2d", idx + 1)
+			testLabel := fmt.Sprintf("GetTxOfSeq_Success_%2.2d", idx+1)
 
 			t.Run(testLabel, func(t *testing.T) {
 				reqTransaction, err := chainDB.GetTxOfSeq(transaction.Seq)
@@ -189,7 +189,7 @@ func runChainDBTest(t *testing.T, chainDB ChainDB) {
 		}
 
 		t.Run("HeadSeq", func(t *testing.T) {
-			require.Equal(t, chainDB.Len() - 1, chainDB.HeadSeq(),
+			require.Equal(t, chainDB.Len()-1, chainDB.HeadSeq(),
 				"HeadSeq() should be Len() - 1")
 		})
 
