@@ -17,11 +17,12 @@ type MeasureChain func() uint64
 
 type CXOStore struct {
 	Meta []byte
-	Txs  registry.Refs `skyobject:"schema:iko.Transaction"`
+	Txs  registry.Refs `skyobject:"schema=iko.Transaction"`
 }
 
 var (
 	cxoReg = registry.NewRegistry(func(r *registry.Reg) {
+		r.Register("cipher.Address", cipher.Address{})
 		r.Register("iko.Transaction", Transaction{})
 		r.Register("iko.Store", CXOStore{})
 	})
