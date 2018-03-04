@@ -30,6 +30,7 @@ var (
 type CXOChainConfig struct {
 	Dir                string
 	Public             bool
+	Memory             bool
 	MessengerAddresses []string
 	CXOAddress         string
 	CXORPCAddress      string
@@ -69,7 +70,7 @@ type CXOChain struct {
 	len util.SafeInt
 }
 
-func NewCXOChain(txChecker TxChecker, config *CXOChainConfig) (*CXOChain, error) {
+func NewCXOChain(config *CXOChainConfig) (*CXOChain, error) {
 	if e := config.Process(); e != nil {
 		return nil, e
 	}
@@ -84,12 +85,22 @@ func NewCXOChain(txChecker TxChecker, config *CXOChainConfig) (*CXOChain, error)
 	if e := prepareNode(chain); e != nil {
 		return nil, e
 	}
-
-	if e := chain.runTxService(txChecker); e != nil {
-		return nil, e
-	}
+	//
+	//if e := chain.RunTxService(txChecker); e != nil {
+	//	return nil, e
+	//}
 
 	return chain, nil
+}
+
+func (c *CXOChain) Close() {
+	close(c.received)
+	close(c.accepted)
+	c.wg.Wait()
+	if e := c.node.Close(); e != nil {
+		c.l.WithError(e).
+			Error("error on cxo node close")
+	}
 }
 
 /*
@@ -107,6 +118,7 @@ func prepareNode(chain *CXOChain) error {
 
 	nc.DataDir = chain.c.Dir
 	nc.Public = chain.c.Public
+	nc.InMemoryDB = chain.c.Memory
 
 	nc.TCP.Listen = chain.c.CXOAddress
 	nc.TCP.Discovery = node.Addresses(chain.c.MessengerAddresses)
@@ -217,7 +229,7 @@ func prepareNode(chain *CXOChain) error {
 	return nil
 }
 
-func (c *CXOChain) runTxService(txChecker TxChecker) error {
+func (c *CXOChain) RunTxService(txChecker TxChecker) error {
 	c.wg.Add(1)
 	defer c.wg.Done()
 
@@ -245,7 +257,7 @@ func (c *CXOChain) runTxService(txChecker TxChecker) error {
 	<<< PUBLIC FUNCTIONS >>>
 */
 
-func (c *CXOChain) InitChain(sk cipher.SecKey) error {
+func (c *CXOChain) InitChain() error {
 	defer c.lock()()
 
 	up, e := cxoUnpack(c)

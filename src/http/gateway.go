@@ -15,19 +15,16 @@ type Gateway struct {
 }
 
 func (g *Gateway) host(mux *http.ServeMux) error {
-
 	if g.IKO != nil {
 		if e := ikoGateway(mux, g.IKO); e != nil {
 			return e
 		}
 	}
-
 	if g.Wallet != nil {
 		if e := walletGateway(mux, g.Wallet); e != nil {
 			return e
 		}
 	}
-
 	return nil
 }
 

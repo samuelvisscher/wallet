@@ -7,18 +7,27 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/sirupsen/logrus.v1"
 	"gopkg.in/urfave/cli.v1"
+	"io/ioutil"
 	"os"
 	"os/signal"
 )
 
 const (
-	MasterPublicKey = "master-public-key"
+	RootPubKey = "root-public-key"
+	RootSecKey = "root-secret-key"
+	RootNonce  = 885560
+	TxPubKey   = "tx-public-key"
 
-	MemoryMode = "memory"
+	TestMode     = "test"
+	TestTxCount  = "test-tx-count"
+	TestTxSecKey = "test-tx-secret-key"
 
-	TestMode           = "test"
-	TestSecretKey      = "test-secret-key"
-	TestInjectionCount = "test-injection-count"
+	CXODir             = "cxo-dir"
+	CXOAddress         = "cxo-address"
+	CXORPCAddress      = "cxo-rpc-address"
+	DiscoveryAddresses = "messenger-addresses"
+
+	WalletDir = "wallet-dir"
 
 	HttpAddress = "http-address"
 	GUI         = "gui"
@@ -45,18 +54,19 @@ func init() {
 	app.Description = "kittycash initial coin offering service"
 	app.Flags = cli.FlagsByName{
 		/*
-			<<< MASTER PUBLIC KEY >>>
+			<<< MASTER >>>
 		*/
 		cli.StringFlag{
-			Name:  Flag(MasterPublicKey, "pk"),
-			Usage: "public key to trust as master decision maker",
+			Name:  Flag(RootPubKey, "rpk"),
+			Usage: "public key to use as main blockchain signer",
 		},
-		/*
-			<<< MEMORY MODE >>>
-		*/
-		cli.BoolFlag{
-			Name:  Flag(MemoryMode, "m"),
-			Usage: "whether to run in memory-only mode",
+		cli.StringFlag{
+			Name:  Flag(RootSecKey, "rsk"),
+			Usage: "secret key to use as main blockchain signer",
+		},
+		cli.StringFlag{
+			Name:  Flag(TxPubKey, "tpk"),
+			Usage: "public key that is trusted for transactions",
 		},
 		/*
 			<<< TEST MODE >>>
@@ -65,13 +75,43 @@ func init() {
 			Name:  Flag(TestMode, "t"),
 			Usage: "whether to use test data for run",
 		},
-		cli.StringFlag{
-			Name:  Flag(TestSecretKey, "sk"),
-			Usage: "only valid in test mode, used for injecting transactions",
-		},
 		cli.IntFlag{
-			Name:  Flag(TestInjectionCount, "tc"),
+			Name:  Flag(TestTxCount, "tc"),
 			Usage: "only valid in test mode, injects a number of initial transactions for testing",
+		},
+		cli.StringFlag{
+			Name: Flag(TestTxSecKey, "tsk"),
+			Usage: "secret key for signing test transactions",
+			Value: new(cipher.SecKey).Hex(),
+		},
+		/*
+			<<< WALLET CONFIG >>>
+		*/
+		cli.StringFlag{
+			Name:  Flag(WalletDir),
+			Usage: "directory to store wallet files",
+			Value: "./kc/wallet",
+		},
+		/*
+			<<< CXO CONFIG >>>
+		*/
+		cli.StringFlag{
+			Name:  Flag(CXODir),
+			Usage: "directory to store cxo files",
+			Value: "./kc/cxo",
+		},
+		cli.StringFlag{
+			Name:  Flag(CXOAddress),
+			Usage: "address to use to serve CXO",
+			Value: "[::]:8123", // TODO: Determine a default value.
+		},
+		cli.StringSliceFlag{
+			Name:  Flag(DiscoveryAddresses),
+			Usage: "discovery addresses",
+		},
+		cli.StringSliceFlag{
+			Name:  Flag(CXORPCAddress),
+			Usage: "address for CXO RPC, leave blank to disable CXO RPC",
 		},
 		/*
 			<<< HTTP SERVER >>>
@@ -88,7 +128,7 @@ func init() {
 		cli.StringFlag{
 			Name:  Flag(GUIDir),
 			Usage: "directory to serve GUI from",
-			Value: "./static",
+			Value: "./kc/static",
 		},
 		cli.BoolFlag{
 			Name:  Flag(TLS),
@@ -110,41 +150,89 @@ func action(ctx *cli.Context) error {
 	quit := CatchInterrupt()
 
 	var (
-		masterPK   = cipher.MustPubKeyFromHex(ctx.String(MasterPublicKey))
-		memoryMode = ctx.Bool(MemoryMode)
-		testMode   = ctx.Bool(TestMode)
-		testSK     = cipher.MustSecKeyFromHex(ctx.String(TestSecretKey))
-		testCount  = ctx.Int(TestInjectionCount)
+		rootPK = cipher.MustPubKeyFromHex(ctx.String(RootPubKey))
+		rootSK = cipher.MustSecKeyFromHex(ctx.String(RootSecKey))
+		txPK   = cipher.MustPubKeyFromHex(ctx.String(TxPubKey))
+
+		testMode  = ctx.Bool(TestMode)
+		testCount = ctx.Int(TestTxCount)
+		testSK    = cipher.MustSecKeyFromHex(ctx.String(TestTxSecKey))
+
+		walletDir = ctx.String(WalletDir)
+
+		cxoDir             = ctx.String(CXODir)
+		cxoAddress         = ctx.String(CXOAddress)
+		cxoRPCAddress      = ctx.String(CXORPCAddress)
+		discoveryAddresses = ctx.StringSlice(DiscoveryAddresses)
+
+		httpAddress = ctx.String(HttpAddress)
+		gui         = ctx.BoolT(GUI)
+		guiDir      = ctx.String(GUIDir)
+		tls         = ctx.Bool(TLS)
+		tlsCert     = ctx.String(TLSCert)
+		tlsKey      = ctx.String(TLSKey)
 	)
 
 	var (
-		chainDB iko.ChainDB
-		stateDB iko.StateDB
+		e        error
+		stateDB  iko.StateDB
+		cxoChain *iko.CXOChain
+		memChain *iko.MemoryChain
 	)
-
-	// Prepare ChainDB.
-	switch {
-	case memoryMode:
-		chainDB = iko.NewMemoryChain(10)
-	}
 
 	// Prepare StateDB.
 	stateDB = iko.NewMemoryState()
 
+	// Prepare ChainDB.
+	switch testMode {
+	case true:
+		memChain = iko.NewMemoryChain(10)
+	case false:
+		cxoChain, e = iko.NewCXOChain(&iko.CXOChainConfig{
+			Dir:                cxoDir,
+			Public:             true,
+			Memory:             testMode,
+			MessengerAddresses: discoveryAddresses,
+			CXOAddress:         cxoAddress,
+			CXORPCAddress:      cxoRPCAddress,
+			Master:             true,
+			MasterPK:           rootPK,
+			MasterSK:           rootSK,
+			MasterNonce:        RootNonce,
+		})
+		if e != nil {
+			return e
+		}
+		defer cxoChain.Close()
+	}
+
 	// Prepare blockchain config.
 	bcConfig := &iko.BlockChainConfig{
-		CreatorPK: masterPK,
+		CreatorPK: txPK,
 		TxAction: func(tx *iko.Transaction) error {
 			return nil
 		},
 	}
 
 	// Prepare blockchain.
+	var chainDB iko.ChainDB
+	switch {
+	case memChain != nil:
+		chainDB = memChain
+
+	case cxoChain != nil:
+		chainDB = cxoChain
+	}
 	bc, e := iko.NewBlockChain(bcConfig, chainDB, stateDB)
 	if e != nil {
 		return e
 	}
 	defer bc.Close()
+
+	if cxoChain != nil {
+		cxoChain.RunTxService(iko.MakeTxChecker(bc))
+	}
+
 	log.Info("finished preparing blockchain")
 
 	// Prepare test data.
@@ -163,8 +251,17 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Prepare wallet.
-	os.MkdirAll("wallet", os.FileMode(0700))
-	wallet.SetRootDir("wallet")
+	if testMode {
+		tempDir, e := ioutil.TempDir(os.TempDir(), "kc")
+		if e != nil {
+			return e
+		}
+		defer os.RemoveAll(tempDir)
+		walletDir = tempDir
+	}
+	if e := wallet.SetRootDir(walletDir); e != nil {
+		return e
+	}
 	walletManager, e := wallet.NewManager()
 	if e != nil {
 		return e
@@ -173,9 +270,12 @@ func action(ctx *cli.Context) error {
 	// Prepare http server.
 	httpServer, e := http.NewServer(
 		&http.ServerConfig{
-			Address:   ctx.String(HttpAddress),
-			EnableGUI: ctx.BoolT(GUI),
-			EnableTLS: false,
+			Address:     httpAddress,
+			EnableGUI:   gui,
+			GUIDir:      guiDir,
+			EnableTLS:   tls,
+			TLSCertFile: tlsCert,
+			TLSKeyFile:  tlsKey,
 		},
 		&http.Gateway{
 			IKO:    bc,
