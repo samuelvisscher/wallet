@@ -114,7 +114,7 @@ func init() {
 			Name:  Flag(DiscoveryAddresses),
 			Usage: "discovery addresses",
 		},
-		cli.StringSliceFlag{
+		cli.StringFlag{
 			Name:  Flag(CXORPCAddress),
 			Usage: "address for CXO RPC, leave blank to disable CXO RPC",
 		},
@@ -204,6 +204,7 @@ func action(ctx *cli.Context) error {
 	if e != nil {
 		return e
 	}
+	defer cxoChain.Close()
 
 	// Prepare blockchain config.
 	bcConfig := &iko.BlockChainConfig{
@@ -225,7 +226,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	if doInit || testMode {
-		if e := bc.InitState(); e != nil {
+		if e := cxoChain.InitChain(); e != nil {
 			return e
 		}
 	}

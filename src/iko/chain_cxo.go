@@ -42,7 +42,7 @@ type CXOChainConfig struct {
 	MasterNonce uint64 // Public
 }
 
-func (c *CXOChainConfig) Process() error {
+func (c *CXOChainConfig) Process(log *logrus.Logger) error {
 	if e := c.MasterPK.Verify(); e != nil {
 		return e
 	}
@@ -55,7 +55,6 @@ func (c *CXOChainConfig) Process() error {
 			return errors.New("public and secret keys do not match")
 		}
 	}
-
 	return nil
 }
 
@@ -72,13 +71,14 @@ type CXOChain struct {
 }
 
 func NewCXOChain(config *CXOChainConfig) (*CXOChain, error) {
-	if e := config.Process(); e != nil {
+	log := logrus.New()
+	if e := config.Process(log); e != nil {
 		return nil, e
 	}
 
 	chain := &CXOChain{
 		c:        config,
-		l:        logrus.New(),
+		l:        log,
 		received: make(chan *Transaction),
 		accepted: make(chan *Transaction),
 	}
@@ -86,10 +86,6 @@ func NewCXOChain(config *CXOChainConfig) (*CXOChain, error) {
 	if e := prepareNode(chain); e != nil {
 		return nil, e
 	}
-	//
-	//if e := chain.RunTxService(txChecker); e != nil {
-	//	return nil, e
-	//}
 
 	return chain, nil
 }
@@ -122,9 +118,12 @@ func prepareNode(chain *CXOChain) error {
 	nc.InMemoryDB = chain.c.Memory
 
 	nc.TCP.Listen = chain.c.CXOAddress
-	nc.TCP.Discovery = node.Addresses(chain.c.MessengerAddresses)
-
-	nc.RPC = chain.c.CXORPCAddress
+	if len(chain.c.MessengerAddresses) > 0 {
+		nc.TCP.Discovery = node.Addresses(chain.c.MessengerAddresses)
+	}
+	if chain.c.CXORPCAddress != "" {
+		nc.RPC = chain.c.CXORPCAddress
+	}
 
 	nc.OnRootReceived = func(c *node.Conn, r *registry.Root) error {
 		defer chain.lock()()

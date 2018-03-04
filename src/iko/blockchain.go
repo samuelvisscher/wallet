@@ -72,7 +72,7 @@ func (bc *BlockChain) InitState() error {
 		if e != nil {
 			return e
 		}
-		bc.log.WithField("tx", tx.String()).Debugf("InitState (%d)", i)
+		bc.log.WithField("tx", tx.String()).Infof("InitState (%d)", i)
 
 		// Check hash, seq and sig of tx.
 		if e := tx.Verify(prev); e != nil {
