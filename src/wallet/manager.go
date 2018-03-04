@@ -132,11 +132,15 @@ func (m *Manager) DeleteWallet(label string) error {
 
 // DisplayWallet displays the wallet of specified label.
 // Password needs to be given if a wallet is still locked.
-func (m *Manager) DisplayWallet(label, password string) (*FloatingWallet, error) {
+// Addresses ensures that wallet has at least the number of address entries.
+func (m *Manager) DisplayWallet(label, password string, addresses int) (*FloatingWallet, error) {
 	defer m.lock()()
 
 	switch w, e := m.getWallet(label); e {
 	case nil:
+		if e := w.EnsureEntries(addresses); e != nil {
+			return nil, e
+		}
 		return w.ToFloating(), nil
 
 	case ErrWalletNotFound:
@@ -152,29 +156,14 @@ func (m *Manager) DisplayWallet(label, password string) (*FloatingWallet, error)
 			return nil, e
 		}
 		m.wallets[label] = w
+		if e := w.EnsureEntries(addresses); e != nil {
+			return nil, e
+		}
 		return w.ToFloating(), nil
 
 	default:
 		return nil, errors.New("unknown error")
 	}
-}
-
-// EnsureWalletEntries ensures that the wallet of specified label
-// has the specified number of address entries.
-func (m *Manager) EnsureWalletEntries(label string, addresses int) (*FloatingWallet, error) {
-	defer m.lock()()
-
-	w, e := m.getWallet(label)
-	if e != nil {
-		return nil, e
-	}
-	if e := w.EnsureEntries(addresses); e != nil {
-		return nil, e
-	}
-	if e := w.Save(); e != nil {
-		return nil, e
-	}
-	return w.ToFloating(), nil
 }
 
 /*
