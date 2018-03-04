@@ -122,12 +122,14 @@ func (tx Transaction) Verify(prev *Transaction) error {
 
 	// Check hash.
 	if isGenesis {
-		if tx.Prev != (TxHash{}) {
-			return errors.New("invalid prev hash")
+		if empty := (TxHash{}); tx.Prev != empty {
+			return fmt.Errorf("genesis tx expects prev:'%s', got prev:'%s'",
+				empty.Hex(), tx.Prev.Hex())
+			return errors.New("is genesis, invalid prev hash")
 		}
 	} else {
 		if tx.Prev != prev.Hash() {
-			return errors.New("invalid prev hash")
+			return errors.New("not genesis, invalid prev hash")
 		}
 	}
 

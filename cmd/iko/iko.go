@@ -70,7 +70,7 @@ func init() {
 			Usage: "public key that is trusted for transactions",
 		},
 		cli.BoolFlag{
-			Name: Flag(Init),
+			Name:  Flag(Init),
 			Usage: "whether to init the root if it doesn't exist",
 		},
 		/*
@@ -85,7 +85,7 @@ func init() {
 			Usage: "only valid in test mode, injects a number of initial transactions for testing",
 		},
 		cli.StringFlag{
-			Name: Flag(TestTxSecKey, "tsk"),
+			Name:  Flag(TestTxSecKey, "tsk"),
 			Usage: "secret key for signing test transactions",
 			Value: new(cipher.SecKey).Hex(),
 		},

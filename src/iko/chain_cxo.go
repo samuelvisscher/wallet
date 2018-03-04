@@ -10,6 +10,7 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/skycoin/src/cipher/encoder"
 	"gopkg.in/sirupsen/logrus.v1"
+	"os"
 	"sync"
 )
 
@@ -71,7 +72,12 @@ type CXOChain struct {
 }
 
 func NewCXOChain(config *CXOChainConfig) (*CXOChain, error) {
-	log := logrus.New()
+	log := &logrus.Logger{
+		Out:       os.Stderr,
+		Formatter: new(logrus.TextFormatter),
+		Hooks:     make(logrus.LevelHooks),
+		Level:     logrus.DebugLevel,
+	}
 	if e := config.Process(log); e != nil {
 		return nil, e
 	}
@@ -289,13 +295,20 @@ func (c *CXOChain) InitChain() error {
 
 func (c *CXOChain) Head() (Transaction, error) {
 	defer c.lock()()
-	var tx Transaction
+	var (
+		tx   Transaction
+		cLen = c.len.Val()
+	)
+
+	if cLen < 1 {
+		return Transaction{}, errors.New("no transactions available")
+	}
 
 	store, _, p, e := c.getStore(gsRead)
 	if e != nil {
 		return tx, e
 	}
-	if _, e := store.Txs.ValueByIndex(p, c.len.Val(), &tx); e != nil {
+	if _, e := store.Txs.ValueByIndex(p, cLen-1, &tx); e != nil {
 		return Transaction{}, e
 	}
 	return tx, nil
@@ -311,10 +324,12 @@ func (c *CXOChain) AddTx(tx Transaction, check TxChecker) error {
 		return errors.New("not master node")
 	}
 	if e := check(&tx); e != nil {
+		c.l.WithError(e).Error("failed")
 		return e
 	}
 
 	defer c.lock()()
+	cLen := c.len.Val()
 
 	store, r, up, e := c.getStore(gsWrite)
 	if e != nil {
@@ -330,6 +345,7 @@ func (c *CXOChain) AddTx(tx Transaction, check TxChecker) error {
 		return e
 	}
 	c.node.Publish(r)
+	c.len.Set(cLen + 1)
 	return nil
 }
 

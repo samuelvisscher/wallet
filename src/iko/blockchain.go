@@ -209,9 +209,9 @@ func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (Paginated
 	if err != nil {
 		return PaginatedTransactions{}, err
 	}
-	len := bc.chain.Len()
+	cLen := bc.chain.Len()
 	return PaginatedTransactions{
-		TotalPageCount: totalPageCount(len, perPage),
+		TotalPageCount: totalPageCount(cLen, perPage),
 		Transactions:   transactions,
 	}, nil
 }
