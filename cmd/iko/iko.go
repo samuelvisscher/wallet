@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	Init       = "init"
 	RootPubKey = "root-public-key"
 	RootSecKey = "root-secret-key"
 	RootNonce  = 885560
@@ -67,6 +68,10 @@ func init() {
 		cli.StringFlag{
 			Name:  Flag(TxPubKey, "tpk"),
 			Usage: "public key that is trusted for transactions",
+		},
+		cli.BoolFlag{
+			Name: Flag(Init),
+			Usage: "whether to init the root if it doesn't exist",
 		},
 		/*
 			<<< TEST MODE >>>
@@ -153,6 +158,7 @@ func action(ctx *cli.Context) error {
 		rootPK = cipher.MustPubKeyFromHex(ctx.String(RootPubKey))
 		rootSK = cipher.MustSecKeyFromHex(ctx.String(RootSecKey))
 		txPK   = cipher.MustPubKeyFromHex(ctx.String(TxPubKey))
+		doInit = ctx.Bool(Init)
 
 		testMode  = ctx.Bool(TestMode)
 		testCount = ctx.Int(TestTxCount)
@@ -177,33 +183,26 @@ func action(ctx *cli.Context) error {
 		e        error
 		stateDB  iko.StateDB
 		cxoChain *iko.CXOChain
-		memChain *iko.MemoryChain
 	)
 
 	// Prepare StateDB.
 	stateDB = iko.NewMemoryState()
 
 	// Prepare ChainDB.
-	switch testMode {
-	case true:
-		memChain = iko.NewMemoryChain(10)
-	case false:
-		cxoChain, e = iko.NewCXOChain(&iko.CXOChainConfig{
-			Dir:                cxoDir,
-			Public:             true,
-			Memory:             testMode,
-			MessengerAddresses: discoveryAddresses,
-			CXOAddress:         cxoAddress,
-			CXORPCAddress:      cxoRPCAddress,
-			Master:             true,
-			MasterPK:           rootPK,
-			MasterSK:           rootSK,
-			MasterNonce:        RootNonce,
-		})
-		if e != nil {
-			return e
-		}
-		defer cxoChain.Close()
+	cxoChain, e = iko.NewCXOChain(&iko.CXOChainConfig{
+		Dir:                cxoDir,
+		Public:             true,
+		Memory:             testMode,
+		MessengerAddresses: discoveryAddresses,
+		CXOAddress:         cxoAddress,
+		CXORPCAddress:      cxoRPCAddress,
+		Master:             true,
+		MasterPK:           rootPK,
+		MasterSK:           rootSK,
+		MasterNonce:        RootNonce,
+	})
+	if e != nil {
+		return e
 	}
 
 	// Prepare blockchain config.
@@ -215,15 +214,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Prepare blockchain.
-	var chainDB iko.ChainDB
-	switch {
-	case memChain != nil:
-		chainDB = memChain
-
-	case cxoChain != nil:
-		chainDB = cxoChain
-	}
-	bc, e := iko.NewBlockChain(bcConfig, chainDB, stateDB)
+	bc, e := iko.NewBlockChain(bcConfig, cxoChain, stateDB)
 	if e != nil {
 		return e
 	}
@@ -231,6 +222,12 @@ func action(ctx *cli.Context) error {
 
 	if cxoChain != nil {
 		cxoChain.RunTxService(iko.MakeTxChecker(bc))
+	}
+
+	if doInit || testMode {
+		if e := bc.InitState(); e != nil {
+			return e
+		}
 	}
 
 	log.Info("finished preparing blockchain")
@@ -252,6 +249,7 @@ func action(ctx *cli.Context) error {
 
 	// Prepare wallet.
 	if testMode {
+
 		tempDir, e := ioutil.TempDir(os.TempDir(), "kc")
 		if e != nil {
 			return e
