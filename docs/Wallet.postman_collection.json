@@ -246,6 +246,201 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "IKO",
+			"description": "",
+			"item": [
+				{
+					"name": "Get Kitty",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {},
+						"url": {
+							"raw": "{{domain}}/api/iko/kitty/{{$randomInt}}?type=json",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"api",
+								"iko",
+								"kitty",
+								"{{$randomInt}}"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "json",
+									"equals": true,
+									"description": "Type of output. \"json\" or \"enc\""
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Get Address",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {},
+						"url": {
+							"raw": "{{domain}}/api/iko/address/2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7?type=json",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"api",
+								"iko",
+								"address",
+								"2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "json",
+									"equals": true,
+									"description": "Type of output. \"json\" or \"enc\""
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tx",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {},
+						"url": {
+							"raw": "{{domain}}/api/iko/tx/b40c5885d76bc85ae37b40c34b559af8ad511a4391e2fc0eb41b56a00b39f66c?type=enc&request=hash",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"api",
+								"iko",
+								"tx",
+								"b40c5885d76bc85ae37b40c34b559af8ad511a4391e2fc0eb41b56a00b39f66c"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "enc",
+									"equals": true,
+									"description": "Type of output. \"json\" or \"enc\""
+								},
+								{
+									"key": "request",
+									"value": "hash",
+									"equals": true,
+									"description": "Type of request. \"hash\" or \"seq\""
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Get Head Tx",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {},
+						"url": {
+							"raw": "{{domain}}/api/iko/head_tx?type=json",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"api",
+								"iko",
+								"head_tx"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "json",
+									"equals": true,
+									"description": "Type of output. \"json\" or \"enc\""
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Get Txs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {},
+						"url": {
+							"raw": "{{domain}}/api/iko/txs?current_page=2&per_page=10",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"api",
+								"iko",
+								"txs"
+							],
+							"query": [
+								{
+									"key": "current_page",
+									"value": "2",
+									"equals": true,
+									"description": "Current page index."
+								},
+								{
+									"key": "per_page",
+									"value": "10",
+									"equals": true,
+									"description": "Number of items per page."
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Inject Tx",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"hex\": \"8c9a7b5e9b578110388399b275fd010a8906e9637ac082e9cdeb1339f333319414000000000000001e43ab6754ea18151400000000000000000427fcd0f0b9461c5c516cd66a4b5ac413978272000427fcd0f0b9461c5c516cd66a4b5ac4139782725d743acc0b8b40b0be6466d6b84a5a980e64358f153b7af4e676708e95c79d3628ae9a1111c0aaa040aac5e054f81a45588bafac6dee2cdae05457475498301a01\"\n}"
+						},
+						"url": {
+							"raw": "{{domain}}/api/iko/inject_tx",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"api",
+								"iko",
+								"inject_tx"
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }
