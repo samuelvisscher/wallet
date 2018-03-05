@@ -56,16 +56,16 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 		_, e := SwitchContType(w, r, ContTypeActions{
 			CtApplicationForm: func() (bool, error) {
 				var (
-					vEncrypted = r.PostFormValue("encrypted")
 					vLabel     = r.PostFormValue("label")
 					vSeed      = r.PostFormValue("seed")
-					vPassword  = r.PostFormValue("password")
 					vAddresses = r.PostFormValue("aCount")
+					vEncrypted = r.PostFormValue("encrypted")
+					vPassword  = r.PostFormValue("password")
 				)
 
 				encrypted, e := strconv.ParseBool(vEncrypted)
 				if e != nil {
-					sendJson(w, http.StatusBadRequest,
+					return false, sendJson(w, http.StatusBadRequest,
 						fmt.Sprintf("Error: %s", e))
 				}
 
@@ -81,23 +81,22 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 				 * Verify that all values are correct
 				 * Respond if options are not correct
 				 */
-				if e := opts.Verify; e != nil {
-					sendJson(w, http.StatusBadRequest,
-						fmt.Sprintf("Message: %s", e))
+
+				if e := opts.Verify(); e != nil {
+					return false, sendJson(w, http.StatusBadRequest,
+						fmt.Sprintf("Error: %s", e.Error()))
 				}
 
 				// Get aCount and convert it to int.
 				aCount, e := strconv.Atoi(vAddresses)
-
-				// Don't allow anything other than int.
 				if e != nil {
-					sendJson(w, http.StatusNotAcceptable,
-						fmt.Sprintf("Error: %s", e))
+					return false, sendJson(w, http.StatusNotAcceptable,
+						fmt.Sprintf("Error: %s", e.Error()))
 				}
 
 				if e := g.NewWallet(&opts, aCount); e != nil {
-					sendJson(w, http.StatusInternalServerError,
-						fmt.Sprintf("Error: %s", e))
+					return false, sendJson(w, http.StatusInternalServerError,
+						fmt.Sprintf("Error: %s", e.Error()))
 				}
 
 				return true, sendJson(w, http.StatusOK, true)
