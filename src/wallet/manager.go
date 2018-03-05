@@ -102,6 +102,10 @@ func (m *Manager) ListWallets() []Stat {
 func (m *Manager) NewWallet(opts *Options, addresses int) error {
 	defer m.lock()()
 
+	if addresses < 0 {
+		return errors.New("can not have negative number of entries")
+	}
+
 	if _, ok := m.wallets[opts.Label]; ok {
 		return ErrLabelAlreadyExists
 	}

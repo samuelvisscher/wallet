@@ -13,6 +13,7 @@ func walletGateway(m *http.ServeMux, g *wallet.Manager) error {
 	Handle(m, "/api/wallets/new", "POST", newWallet(g))
 	Handle(m, "/api/wallets/delete", "POST", deleteWallet(g))
 	Handle(m, "/api/wallets/get", "POST", getWallet(g))
+	Handle(m, "/api/wallets/seed", "GET", newSeed())
 	return nil
 }
 
@@ -59,19 +60,8 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 					vLabel     = r.PostFormValue("label")
 					vSeed      = r.PostFormValue("seed")
 					vPassword  = r.PostFormValue("password")
-					vAddresses = r.PostFormValue("addresses")
+					vAddresses = r.PostFormValue("aCount")
 				)
-
-				// Send json response if body is nil.
-				if r.Body == nil {
-					return false, sendJson(w, http.StatusBadRequest,
-						fmt.Sprint("request body missing"))
-				}
-
-				if e := r.ParseForm(); e != nil {
-					return false, sendJson(w, http.StatusBadRequest,
-						fmt.Sprintf("Error: %s", e))
-				}
 
 				encrypted, e := strconv.ParseBool(vEncrypted)
 				if e != nil {
@@ -96,16 +86,16 @@ func newWallet(g *wallet.Manager) HandlerFunc {
 						fmt.Sprintf("Message: %s", e))
 				}
 
-				// Get addresses and convert it to int.
-				addr, e := strconv.Atoi(vAddresses)
+				// Get aCount and convert it to int.
+				aCount, e := strconv.Atoi(vAddresses)
 
 				// Don't allow anything other than int.
-				if e != nil || addr < 1 {
+				if e != nil {
 					sendJson(w, http.StatusNotAcceptable,
 						fmt.Sprintf("Error: %s", e))
 				}
 
-				if e := g.NewWallet(&opts, addr); e != nil {
+				if e := g.NewWallet(&opts, aCount); e != nil {
 					sendJson(w, http.StatusInternalServerError,
 						fmt.Sprintf("Error: %s", e))
 				}
@@ -175,5 +165,22 @@ func getWallet(g *wallet.Manager) HandlerFunc {
 			},
 		})
 		return e
+	}
+}
+
+type SeedReply struct {
+	Seed string `json:"seed"`
+}
+
+func newSeed() HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
+		seed, e := wallet.NewSeed()
+		if e != nil {
+			return sendJson(w, http.StatusInternalServerError,
+				fmt.Sprintf("Error: %v", e))
+		}
+		return sendJson(w, http.StatusOK, SeedReply{
+			Seed: seed,
+		})
 	}
 }
