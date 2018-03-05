@@ -35,17 +35,9 @@ type WalletsReply struct {
 
 func listWallets(g *wallet.Manager) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		// Get list of listWall.
-		wallets := WalletsReply{
+		return sendJson(w, http.StatusNoContent, WalletsReply{
 			Wallets: g.ListWallets(),
-		}
-		if wallets.Wallets != nil {
-			// Send json response, status= 200 to user if content was found.
-			return sendJson(w, http.StatusOK, wallets)
-		} else {
-			// Send json response, status= 204 to user if no content was found.
-			return sendJson(w, http.StatusNoContent, wallets)
-		}
+		})
 	}
 }
 
