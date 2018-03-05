@@ -38,7 +38,7 @@ func getKitty(g *iko.BlockChain) HandlerFunc {
 		kState, ok := g.GetKittyState(kittyID)
 		if !ok {
 			return sendJson(w, http.StatusNotFound,
-				fmt.Sprintf("kitty of id '%s' not found", kittyID))
+				fmt.Sprintf("kitty of id '%d' not found", kittyID))
 		}
 		return SwitchTypeQuery(w, r, TqJson, TypeQueryActions{
 			TqJson: func() error {
@@ -244,13 +244,16 @@ type PaginatedTxsReply struct {
 
 func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		perPage, e := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
+		var (
+			qCurrentPage = r.URL.Query().Get("current_page")
+			qPerPage     = r.URL.Query().Get("per_page")
+		)
+		perPage, e := strconv.ParseUint(qPerPage, 10, 64)
 		if e != nil {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
 		}
-		currentPage, e := strconv.ParseUint(
-			r.URL.Query().Get("current_page"), 10, 64)
+		currentPage, e := strconv.ParseUint(qCurrentPage, 10, 64)
 		if e != nil {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
