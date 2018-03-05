@@ -4,7 +4,7 @@ Where one claims ownership of dem' kitties.
 
 ## Run IKO node in test mode
 
-Run a node with test data and 100 kitties, where RESTful API will be served on `127.0.0.1:8080 `, while CXO listening port will be on `127.0.0.1:7140`.
+Run a node with test data and 100 kitties, where RESTful API will be served on `127.0.0.1:8080`, while CXO listening port will be on `127.0.0.1:7140`.
 
 ```bash
 iko \

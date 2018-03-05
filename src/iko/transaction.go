@@ -116,7 +116,6 @@ func (tx Transaction) Sign(sk cipher.SecKey) cipher.Sig {
 // Verify does not check:
 //		- Whether from address actually owns the kitty of ID.
 //		- Double spending of kitties.
-// TODO (evanlinjin): Write tests.
 func (tx Transaction) Verify(prev *Transaction) error {
 	isGenesis := prev == nil
 
@@ -158,7 +157,6 @@ func (tx Transaction) Verify(prev *Transaction) error {
 // IsKittyGen returns true if:
 //		- Tx is of the correct structure to create a new kitty.
 //		- Tx is of the right address to create a new kitty.
-// TODO (evanlinjin): Write tests.
 func (tx Transaction) IsKittyGen(pk cipher.PubKey) bool {
 	// Check from address.
 	if e := tx.From.Verify(pk); e != nil {
