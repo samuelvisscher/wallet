@@ -78,27 +78,6 @@ func (bc *BlockChain) InitState() error {
 		if e := check(&tx); e != nil {
 			return e
 		}
-
-		//// Check hash, seq and sig of tx.
-		//if e := tx.Verify(prev); e != nil {
-		//	return e
-		//}
-		//
-		//// If tx is to structured to create a kitty, attempt to add to state.
-		//// Otherwise, attempt to transfer it's ownership in the state.
-		//if tx.IsKittyGen(bc.c.CreatorPK) {
-		//	if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.Out); e != nil {
-		//		return e
-		//	}
-		//} else {
-		//	oldTx, e := bc.chain.GetTxOfHash(tx.In)
-		//	if e != nil {
-		//		return e
-		//	}
-		//	if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, oldTx.Out, tx.Out); e != nil {
-		//		return e
-		//	}
-		//}
 	}
 	return nil
 }
