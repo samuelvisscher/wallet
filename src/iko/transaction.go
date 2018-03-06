@@ -25,6 +25,8 @@ func (h TxHashes) ToStringArray() []string {
 	return out
 }
 
+type TxAction func(tx *Transaction) error
+
 // Transaction represents a kitty transaction.
 // For IKO, transaction and block are combined to formed one entity.
 type Transaction struct {
