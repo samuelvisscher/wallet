@@ -131,8 +131,8 @@ func getWallet(g *wallet.Manager) HandlerFunc {
 			CtApplicationForm: func() (bool, error) {
 				var (
 					vLabel     = r.PostFormValue("label")
-					vPassword  = r.PostFormValue("password")  // Optional.
-					vAddresses = r.PostFormValue("aCount") // Optional.
+					vPassword  = r.PostFormValue("password") // Optional.
+					vAddresses = r.PostFormValue("aCount")   // Optional.
 				)
 				if r.Body == nil {
 					return false, sendJson(w, http.StatusBadRequest,
