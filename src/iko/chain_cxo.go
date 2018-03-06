@@ -250,7 +250,7 @@ func (c *CXOChain) RunTxService(txChecker TxChecker) error {
 					c.l.Warning(e.Error())
 
 				} else {
-					c.len.Set(int(tx.Seq) + 1)
+					c.len.Inc()
 					c.accepted <- tx
 				}
 			}

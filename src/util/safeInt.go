@@ -18,3 +18,10 @@ func (i *SafeInt) Val() int {
 	defer i.m.RUnlock()
 	return i.v
 }
+
+func (i *SafeInt) Inc() int {
+	i.m.Lock()
+	defer i.m.Unlock()
+	i.v += 1
+	return i.v
+}

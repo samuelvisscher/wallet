@@ -91,16 +91,15 @@ func getAddress(g *iko.BlockChain) HandlerFunc {
 type TxMeta struct {
 	Hash string `json:"hash"`
 	Raw  string `json:"raw"`
+	Seq  uint64 `json:"seq(io be implemented)"` // TODO
+	TS   int64   `json:"ts(to be implemented)"` // TODO
 }
 
 type Tx struct {
-	PrevHash string      `json:"prev_hash"`
-	Seq      uint64      `json:"seq"`
-	TS       int64       `json:"time"`
-	KittyID  iko.KittyID `json:"kitty_id"`
-	From     string      `json:"from"`
-	To       string      `json:"to"`
-	Sig      string      `json:"sig"`
+	KittyID iko.KittyID `json:"kitty_id"`
+	In      string      `json:"in"`
+	Out     string      `json:"out"`
+	Sig     string      `json:"sig"`
 }
 
 type TxReply struct {
@@ -115,13 +114,10 @@ func NewTxReplyOfTransaction(tx iko.Transaction) TxReply {
 			Raw:  hex.EncodeToString(tx.Serialize()),
 		},
 		Tx: Tx{
-			PrevHash: tx.Prev.Hex(),
-			Seq:      tx.Seq,
-			TS:       tx.TS,
-			KittyID:  tx.KittyID,
-			From:     tx.From.String(),
-			To:       tx.To.String(),
-			Sig:      tx.Sig.Hex(),
+			KittyID: tx.KittyID,
+			In:      tx.In.Hex(),
+			Out:     tx.Out.String(),
+			Sig:     tx.Sig.Hex(),
 		},
 	}
 }

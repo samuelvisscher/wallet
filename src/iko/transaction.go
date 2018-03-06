@@ -6,10 +6,13 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/skycoin/src/cipher/encoder"
 	"log"
-	"time"
 )
 
 type TxHash cipher.SHA256
+
+func EmptyTxHash() TxHash {
+	return TxHash(cipher.SHA256{})
+}
 
 func (h TxHash) Hex() string {
 	return cipher.SHA256(h).Hex()
@@ -30,59 +33,43 @@ type TxAction func(tx *Transaction) error
 // Transaction represents a kitty transaction.
 // For IKO, transaction and block are combined to formed one entity.
 type Transaction struct {
-	Prev TxHash
-	Seq  uint64 // Each transaction has a sequence.
-	TS   int64  // Timestamp.
-
 	KittyID KittyID
-	From    cipher.Address
-	To      cipher.Address
+	In      TxHash
+	Out     cipher.Address
 	Sig     cipher.Sig
 }
 
 // NewGenTx creates a "gen" transaction. This is where a kitty is created on the blockchain.
-func NewGenTx(prev *Transaction, kittyID KittyID, sk cipher.SecKey) *Transaction {
+func NewGenTx(kittyID KittyID, sk cipher.SecKey) *Transaction {
 	var (
 		address = cipher.AddressFromSecKey(sk)
-		ts      = time.Now().UnixNano()
-		tx      *Transaction
+		tx      = &Transaction{
+			KittyID: kittyID,
+			In:      EmptyTxHash(),
+			Out:     address,
+		}
 	)
-	if prev == nil {
-		tx = &Transaction{
-			Prev:    TxHash{},
-			Seq:     0,
-			TS:      ts,
-			KittyID: kittyID,
-			From:    address,
-			To:      address,
-		}
-	} else {
-		tx = &Transaction{
-			Prev:    prev.Hash(),
-			Seq:     prev.Seq + 1,
-			TS:      ts,
-			KittyID: kittyID,
-			From:    address,
-			To:      address,
-		}
-	}
 	tx.Sig = tx.Sign(sk)
 	return tx
 }
 
 // NewTransferTx creates a normal transaction where a kitty is transferred from
 // one address to another.
-func NewTransferTx(prev *Transaction, kittyID KittyID, to cipher.Address, sk cipher.SecKey) *Transaction {
+// It returns error when provided secret key does not own input address.
+func NewTransferTx(in *Transaction, out cipher.Address, sk cipher.SecKey) (*Transaction, error) {
+
+	// Check input with secret key.
+	if expAddr := cipher.AddressFromSecKey(sk); in.Out != expAddr {
+		return nil, errors.New("secret key does not own input tx address")
+	}
+
 	tx := &Transaction{
-		Prev:    prev.Hash(),
-		Seq:     prev.Seq + 1,
-		TS:      time.Now().UnixNano(),
-		KittyID: kittyID,
-		From:    cipher.AddressFromSecKey(sk),
-		To:      to,
+		KittyID: in.KittyID,
+		In:      in.Hash(),
+		Out:     out,
 	}
 	tx.Sig = tx.Sign(sk)
-	return tx
+	return tx, nil
 }
 
 func (tx Transaction) Serialize() []byte {
@@ -108,62 +95,47 @@ func (tx Transaction) Sign(sk cipher.SecKey) cipher.Sig {
 	return cipher.SignHash(tx.HashInner(), sk)
 }
 
-// Verify checks the hash, seq and signature of the transaction.
-//		- Previous tx hash.
-//		- Tx sequence.
-//		- Tx timestamp (needs to be ahead of the previous tx, and behind ts now with threshold).
+// Verify checks the input and signature of the transaction.
+//		- Input tx hash.
 //		- Tx signature.
 // Verify does not check:
-//		- Whether from address actually owns the kitty of ID.
 //		- Double spending of kitties.
-func (tx Transaction) Verify(prev *Transaction) error {
-	isGenesis := prev == nil
+//      - True ownership (as 'Verify' does not know current state).
+func (tx Transaction) Verify(in *Transaction) error {
 
-	// Check hash.
-	if isGenesis {
-		if exp := (TxHash{}); tx.Prev != exp {
-			return fmt.Errorf("genesis tx expects prev:'%s', got prev:'%s'",
-				exp.Hex(), tx.Prev.Hex())
-		}
-	} else {
-		if exp := prev.Hash(); tx.Prev != exp {
-			return fmt.Errorf("non-genesis tx expects prev:'%s', got pre:'%s'",
-				exp.Hex(), tx.Prev.Hex())
-		}
+	// Check kitty.
+	if exp := in.KittyID; tx.KittyID != exp {
+		return fmt.Errorf("tx expected 'kitty_id:%d', but we got 'kitty_id:%d'",
+			exp, tx.KittyID)
 	}
 
-	// Check seq.
-	if isGenesis {
-		if tx.Seq != 0 {
-			return errors.New("invalid seq")
+	// Check input.
+	if isGen := in == nil; isGen {
+		if exp := EmptyTxHash(); tx.In != exp {
+			return fmt.Errorf("generation tx expected 'in:%s', but we got 'in:%s'",
+				exp.Hex(), tx.In.Hex())
 		}
 	} else {
-		if tx.Seq != prev.Seq+1 {
-			return errors.New("invalid seq")
-		}
-	}
-
-	// Check timestamp.
-	if prev != nil {
-		if tx.TS <= prev.TS || tx.TS > time.Now().UnixNano()+int64(time.Minute) {
-			return errors.New("invalid ts")
+		if exp := in.Hash(); tx.In != exp {
+			return fmt.Errorf("transfer tx expected 'in:%s', but we got 'in:%s'",
+				exp.Hex(), tx.In.Hex())
 		}
 	}
 
 	// Check signature.
-	return cipher.ChkSig(tx.From, tx.HashInner(), tx.Sig)
+	return cipher.ChkSig(in.Out, tx.HashInner(), tx.Sig)
 }
 
-// IsKittyGen returns true if:
+// IsKittyGen returns true if tx is a generation tx:
 //		- Tx is of the correct structure to create a new kitty.
 //		- Tx is of the right address to create a new kitty.
 func (tx Transaction) IsKittyGen(pk cipher.PubKey) bool {
-	// Check from address.
-	if e := tx.From.Verify(pk); e != nil {
+	// Check input tx hash is empty.
+	if tx.In != EmptyTxHash() {
 		return false
 	}
-	// Check to & from addresses are the same.
-	if tx.To != tx.From {
+	// Check output address.
+	if e := tx.Out.Verify(pk); e != nil {
 		return false
 	}
 	// Accept.
@@ -172,6 +144,6 @@ func (tx Transaction) IsKittyGen(pk cipher.PubKey) bool {
 
 // String returns human readable string of transaction.
 func (tx Transaction) String() string {
-	return fmt.Sprintf("prev:%s|seq:%d|ts:%d|kitty_id:%d|from:%s|to:%s|sig:%s",
-		tx.Prev.Hex(), tx.Seq, tx.TS, tx.KittyID, tx.From.String(), tx.To.String(), tx.Sig.Hex())
+	return fmt.Sprintf("kitty_id:%d|in:%s|out:%s|sig:%s",
+		tx.KittyID, tx.In.Hex(), tx.Out.String(), tx.Sig.Hex())
 }

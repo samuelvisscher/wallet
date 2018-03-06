@@ -237,7 +237,7 @@ func action(ctx *cli.Context) error {
 	if testMode {
 		var tx *iko.Transaction
 		for i := 0; i < testCount; i++ {
-			tx = iko.NewGenTx(tx, iko.KittyID(i), testSK)
+			tx = iko.NewGenTx(iko.KittyID(i), testSK)
 
 			log.WithField("tx", tx.String()).
 				Debugf("test:tx_inject(%d)", i)

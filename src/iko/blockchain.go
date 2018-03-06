@@ -63,8 +63,7 @@ func NewBlockChain(config *BlockChainConfig, chainDB ChainDB, stateDB StateDB) (
 }
 
 func (bc *BlockChain) InitState() error {
-
-	var prev *Transaction
+	var check = MakeTxChecker(bc)
 	for i := uint64(1); i < bc.chain.Len(); i++ {
 
 		// Val transaction.
@@ -72,24 +71,34 @@ func (bc *BlockChain) InitState() error {
 		if e != nil {
 			return e
 		}
-		bc.log.WithField("tx", tx.String()).Infof("InitState (%d)", i)
+		bc.log.
+			WithField("tx", tx.String()).
+			Infof("InitState (%d)", i)
 
-		// Check hash, seq and sig of tx.
-		if e := tx.Verify(prev); e != nil {
+		if e := check(&tx); e != nil {
 			return e
 		}
 
-		// If tx is to structured to create a kitty, attempt to add to state.
-		// Otherwise, attempt to transfer it's ownership in the state.
-		if tx.IsKittyGen(bc.c.CreatorPK) {
-			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
-				return e
-			}
-		} else {
-			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
-				return e
-			}
-		}
+		//// Check hash, seq and sig of tx.
+		//if e := tx.Verify(prev); e != nil {
+		//	return e
+		//}
+		//
+		//// If tx is to structured to create a kitty, attempt to add to state.
+		//// Otherwise, attempt to transfer it's ownership in the state.
+		//if tx.IsKittyGen(bc.c.CreatorPK) {
+		//	if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.Out); e != nil {
+		//		return e
+		//	}
+		//} else {
+		//	oldTx, e := bc.chain.GetTxOfHash(tx.In)
+		//	if e != nil {
+		//		return e
+		//	}
+		//	if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, oldTx.Out, tx.Out); e != nil {
+		//		return e
+		//	}
+		//}
 	}
 	return nil
 }
@@ -158,29 +167,35 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 
 func MakeTxChecker(bc *BlockChain) TxChecker {
 	return func(tx *Transaction) error {
-		var prev *Transaction
-		if temp, e := bc.chain.Head(); e == nil {
-			prev = &temp
+		var unspent *Transaction
+		if tempHash, ok := bc.state.GetKittyUnspentTx(tx.KittyID); ok {
+			temp, e := bc.chain.GetTxOfHash(tempHash)
+			if e != nil {
+				return e
+			}
+			unspent = &temp
 		}
-		if e := tx.Verify(prev); e != nil {
+		if e := tx.Verify(unspent); e != nil {
 			return e
 		}
 		if tx.IsKittyGen(bc.c.CreatorPK) {
 			bc.log.
 				WithField("kitty_id", tx.KittyID).
-				WithField("address", tx.To.String()).
-				Debug("gen_tx")
+				WithField("input", tx.In.Hex()).
+				WithField("output", tx.Out.String()).
+				Debug("processing generation tx")
 
-			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
+			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.Out); e != nil {
 				return e
 			}
 		} else {
 			bc.log.
 				WithField("kitty_id", tx.KittyID).
-				WithField("from_address", tx.From.String()).
-				WithField("to_address", tx.To.String()).
-				Debug("move_tx")
-			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
+				WithField("input", tx.In.Hex()).
+				WithField("output", tx.Out.String()).
+				Debug("processing transfer tx")
+
+			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, unspent.Out, tx.Out); e != nil {
 				return e
 			}
 		}
