@@ -101,29 +101,33 @@ func (tx Transaction) Sign(sk cipher.SecKey) cipher.Sig {
 // Verify does not check:
 //		- Double spending of kitties.
 //      - True ownership (as 'Verify' does not know current state).
-func (tx Transaction) Verify(in *Transaction) error {
-
-	// Check kitty.
-	if exp := in.KittyID; tx.KittyID != exp {
-		return fmt.Errorf("tx expected 'kitty_id:%d', but we got 'kitty_id:%d'",
-			exp, tx.KittyID)
-	}
+func (tx Transaction) Verify(in *Transaction, genPK cipher.PubKey) error {
+	var isGen = in == nil
 
 	// Check input.
-	if isGen := in == nil; isGen {
+	if isGen == true {
 		if exp := EmptyTxHash(); tx.In != exp {
 			return fmt.Errorf("generation tx expected 'in:%s', but we got 'in:%s'",
 				exp.Hex(), tx.In.Hex())
 		}
+
+		// Check signature based on trusted generation public key 'genPK'.
+		return cipher.VerifySignature(genPK, tx.Sig, tx.HashInner())
+
 	} else {
 		if exp := in.Hash(); tx.In != exp {
 			return fmt.Errorf("transfer tx expected 'in:%s', but we got 'in:%s'",
 				exp.Hex(), tx.In.Hex())
 		}
-	}
+		// Check kitty.
+		if exp := in.KittyID; tx.KittyID != exp {
+			return fmt.Errorf("tx expected 'kitty_id:%d', but we got 'kitty_id:%d'",
+				exp, tx.KittyID)
+		}
 
-	// Check signature.
-	return cipher.ChkSig(in.Out, tx.HashInner(), tx.Sig)
+		// Check signature based on previous unspent output.
+		return cipher.ChkSig(in.Out, tx.HashInner(), tx.Sig)
+	}
 }
 
 // IsKittyGen returns true if tx is a generation tx:

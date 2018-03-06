@@ -175,7 +175,7 @@ func MakeTxChecker(bc *BlockChain) TxChecker {
 			}
 			unspent = &temp
 		}
-		if e := tx.Verify(unspent); e != nil {
+		if e := tx.Verify(unspent, bc.c.CreatorPK); e != nil {
 			return e
 		}
 		if tx.IsKittyGen(bc.c.CreatorPK) {
