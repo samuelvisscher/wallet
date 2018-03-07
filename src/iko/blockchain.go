@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"fmt"
 )
 
 type BlockChainConfig struct {
@@ -162,6 +163,13 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 
 func MakeTxChecker(bc *BlockChain) TxChecker {
 	return func(tx *Transaction) error {
+
+		// Check duplicate.
+		if _, e := bc.chain.GetTxOfHash(tx.Hash()); e == nil {
+			return fmt.Errorf("tx of hash '%s' is a duplicate",
+				tx.Hash())
+		}
+
 		var unspent *Transaction
 		if tempHash, ok := bc.state.GetKittyUnspentTx(tx.KittyID); ok {
 			temp, e := bc.chain.GetTxOfHash(tempHash)
