@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 	"fmt"
+	"errors"
 )
 
 type BlockChainConfig struct {
-	CreatorPK cipher.PubKey
-	TxAction  TxAction
+	GenerationPK cipher.PubKey
+	TxAction     TxAction
 }
 
 func (cc *BlockChainConfig) Prepare() error {
@@ -20,7 +21,7 @@ func (cc *BlockChainConfig) Prepare() error {
 			return nil
 		}
 	}
-	if e := cc.CreatorPK.Verify(); e != nil {
+	if e := cc.GenerationPK.Verify(); e != nil {
 		return e
 	}
 	return nil
@@ -97,7 +98,10 @@ func (bc *BlockChain) service() {
 		case <-bc.quit:
 			return
 
-		case txWrap := <-bc.chain.TxChan():
+		case txWrap, ok := <-bc.chain.TxChan():
+			if !ok {
+				return
+			}
 			if e := bc.c.TxAction(&txWrap.Tx); e != nil {
 				panic(e)
 			}
@@ -178,10 +182,11 @@ func MakeTxChecker(bc *BlockChain) TxChecker {
 			}
 			unspent = &temp.Tx
 		}
-		if e := tx.Verify(unspent, bc.c.CreatorPK); e != nil {
+
+		if e := tx.VerifyWith(unspent, bc.c.GenerationPK); e != nil {
 			return e
 		}
-		if tx.IsKittyGen(bc.c.CreatorPK) {
+		if tx.IsKittyGen(bc.c.GenerationPK) {
 			bc.log.
 				WithField("kitty_id", tx.KittyID).
 				WithField("input", tx.In.Hex()).
@@ -197,6 +202,11 @@ func MakeTxChecker(bc *BlockChain) TxChecker {
 				WithField("input", tx.In.Hex()).
 				WithField("output", tx.Out.String()).
 				Debug("processing transfer tx")
+
+			// TEMPORARY: If tx is not signed from generation pk, disallow.
+			if unspent.Out != cipher.AddressFromPubKey(bc.c.GenerationPK) {
+				return errors.New("tx rejected")
+			}
 
 			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, unspent.Out, tx.Out); e != nil {
 				return e

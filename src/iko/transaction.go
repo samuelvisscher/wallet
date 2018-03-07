@@ -108,13 +108,13 @@ func (tx Transaction) Sign(sk cipher.SecKey) cipher.Sig {
 	return cipher.SignHash(tx.HashInner(), sk)
 }
 
-// Verify checks the input and signature of the transaction.
+// VerifyWith checks the input and signature of the transaction.
 //		- Input tx hash.
 //		- Tx signature.
-// Verify does not check:
+// VerifyWith does not check:
 //		- Double spending of kitties.
 //      - True ownership (as 'Verify' does not know current state).
-func (tx Transaction) Verify(in *Transaction, genPK cipher.PubKey) error {
+func (tx Transaction) VerifyWith(in *Transaction, genPK cipher.PubKey) error {
 	var isGen = in == nil
 
 	// Check input.

@@ -196,10 +196,10 @@ func action(ctx *cli.Context) error {
 		MessengerAddresses: discoveryAddresses,
 		CXOAddress:         cxoAddress,
 		CXORPCAddress:      cxoRPCAddress,
-		Master:             true,
-		MasterPK:           rootPK,
-		MasterSK:           rootSK,
-		MasterNonce:        RootNonce,
+		MasterRooter:       true,
+		MasterRootPK:       rootPK,
+		MasterRootSK:       rootSK,
+		MasterRootNonce:    RootNonce,
 	})
 	if e != nil {
 		return e
@@ -208,7 +208,7 @@ func action(ctx *cli.Context) error {
 
 	// Prepare blockchain config.
 	bcConfig := &iko.BlockChainConfig{
-		CreatorPK: txPK,
+		GenerationPK: txPK,
 		TxAction: func(tx *iko.Transaction) error {
 			return nil
 		},

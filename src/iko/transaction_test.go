@@ -31,7 +31,7 @@ func runTransactionVerifyTest(t *testing.T, stateDB StateDB) {
 		if err == nil {
 			prev := NewGenTx(nil, kID, sk)
 			// Since there is no previous transactions then an error should be thrown that previous hash is invalid
-			require.Errorf(t, prev.Verify(prev), "There is no previous tansaction to verify")
+			require.Errorf(t, prev.VerifyWith(prev), "There is no previous tansaction to verify")
 		} else {
 			fmt.Println("StateDB error, failed to create Kitty")
 		}
@@ -57,15 +57,15 @@ func runTransactionVerifyTest(t *testing.T, stateDB StateDB) {
 	t.Run("TransactionCreated_InvalidDataMembers", func(t *testing.T) {
 		// Change transaction previous hash to test if verify return error
 		nextTrans.Prev = TxHash(cipher.SumSHA256([]byte{3, 4, 5, 6}))
-		require.Errorf(t, nextTrans.Verify(prev), "Previous hash was changed!!")
+		require.Errorf(t, nextTrans.VerifyWith(prev), "Previous hash was changed!!")
 
 		// Revert transaction previous hash to its original state and change seqence number to test if verfiy returns error
 		nextTrans.Prev = prev.Hash()
 		nextTrans.Seq = prev.Seq + 5
-		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed and should be invalid!!")
+		require.Errorf(t, nextTrans.VerifyWith(prev), "Previous Seq was changed and should be invalid!!")
 
 		nextTrans.Seq = prev.Seq
-		require.Errorf(t, nextTrans.Verify(prev), "Previous Seq was changed and should be invalid!!")
+		require.Errorf(t, nextTrans.VerifyWith(prev), "Previous Seq was changed and should be invalid!!")
 
 		// Revert transaction sequence to its original state and change TS to test if Verify will return an error
 		nextTrans.Seq = prev.Seq + 1
@@ -75,14 +75,14 @@ func runTransactionVerifyTest(t *testing.T, stateDB StateDB) {
 
 		// Set transaction's TS to invalid value
 		nextTrans.TS = prev.TS - 10
-		require.Errorf(t, nextTrans.Verify(prev), "TS was changed and should be invalid")
+		require.Errorf(t, nextTrans.VerifyWith(prev), "TS was changed and should be invalid")
 
 		// Revert TS to its original value
 		nextTrans.TS = TS
 	})
 
 	t.Run("Transaction_Audit_Verify_Success", func(t *testing.T) {
-		require.Nil(t, nextTrans.Verify(prev), "Verify should return nil for valid transactions")
+		require.Nil(t, nextTrans.VerifyWith(prev), "Verify should return nil for valid transactions")
 	})
 }
 

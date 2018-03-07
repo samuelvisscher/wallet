@@ -39,22 +39,22 @@ type CXOChainConfig struct {
 	CXOAddress         string
 	CXORPCAddress      string
 
-	Master      bool
-	MasterPK    cipher.PubKey
-	MasterSK    cipher.SecKey
-	MasterNonce uint64 // Public
+	MasterRooter    bool
+	MasterRootPK    cipher.PubKey
+	MasterRootSK    cipher.SecKey
+	MasterRootNonce uint64 // Public
 }
 
 func (c *CXOChainConfig) Process(log *logrus.Logger) error {
-	if e := c.MasterPK.Verify(); e != nil {
+	if e := c.MasterRootPK.Verify(); e != nil {
 		return e
 	}
 
-	if c.Master {
-		if e := c.MasterSK.Verify(); e != nil {
+	if c.MasterRooter {
+		if e := c.MasterRootSK.Verify(); e != nil {
 			return e
 		}
-		if c.MasterPK != cipher.PubKeyFromSecKey(c.MasterSK) {
+		if c.MasterRootPK != cipher.PubKeyFromSecKey(c.MasterRootSK) {
 			return errors.New("public and secret keys do not match")
 		}
 	}
@@ -137,18 +137,18 @@ func prepareNode(chain *CXOChain) error {
 		defer chain.lock()()
 
 		switch {
-		case r.Pub != chain.c.MasterPK:
+		case r.Pub != chain.c.MasterRootPK:
 			e := errors.New("received root is not of master public key")
 			chain.l.
-				WithField("master_pk", chain.c.MasterPK.Hex()).
+				WithField("master_pk", chain.c.MasterRootPK.Hex()).
 				WithField("received_pk", r.Pub.Hex()).
 				Warning(e.Error())
 			return e
 
-		case r.Nonce != chain.c.MasterNonce:
+		case r.Nonce != chain.c.MasterRootNonce:
 			e := errors.New("received root is not of master nonce")
 			chain.l.
-				WithField("master_nonce", chain.c.MasterNonce).
+				WithField("master_nonce", chain.c.MasterRootNonce).
 				WithField("received_nonce", r.Nonce).
 				Warning(e.Error())
 			return e
@@ -237,7 +237,7 @@ func prepareNode(chain *CXOChain) error {
 		return e
 	}
 
-	if e := chain.node.Share(chain.c.MasterPK); e != nil {
+	if e := chain.node.Share(chain.c.MasterRootPK); e != nil {
 		return e
 	}
 
@@ -289,8 +289,8 @@ func (c *CXOChain) InitChain() error {
 	r := &registry.Root{
 		Refs:  []registry.Dynamic{sReg},
 		Reg:   cxoReg.Reference(),
-		Pub:   c.c.MasterPK,
-		Nonce: c.c.MasterNonce,
+		Pub:   c.c.MasterRootPK,
+		Nonce: c.c.MasterRootNonce,
 	}
 
 	if e := c.node.Container().Save(up, r); e != nil {
@@ -332,7 +332,7 @@ func (c *CXOChain) Len() uint64 {
 }
 
 func (c *CXOChain) AddTx(txWrap TxWrapper, check TxChecker) error {
-	if c.c.Master == false {
+	if c.c.MasterRooter == false {
 		return errors.New("not master node")
 	}
 	if e := check(&txWrap.Tx); e != nil {
@@ -488,7 +488,7 @@ func (c *CXOChain) getStore(t getStoreType) (*CXOStore, *registry.Root, registry
 */
 
 func cxoRoot(c *CXOChain) (*registry.Root, error) {
-	r, e := c.node.Container().LastRoot(c.c.MasterPK, c.c.MasterNonce)
+	r, e := c.node.Container().LastRoot(c.c.MasterRootPK, c.c.MasterRootNonce)
 	if e != nil {
 		return nil, e
 	}
@@ -516,10 +516,10 @@ func cxoPack(c *CXOChain, r *registry.Root) (*skyobject.Pack, error) {
 }
 
 func cxoUnpack(c *CXOChain) (*skyobject.Unpack, error) {
-	if c.c.Master == false {
+	if c.c.MasterRooter == false {
 		return nil, errors.New("not master")
 	}
-	return c.node.Container().Unpack(c.c.MasterSK, cxoReg)
+	return c.node.Container().Unpack(c.c.MasterRootSK, cxoReg)
 }
 
 func cxoNewStore(up *skyobject.Unpack, s *CXOStore) (registry.Dynamic, error) {
