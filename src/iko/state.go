@@ -16,6 +16,11 @@ type StateDB interface {
 	// It should return false if kitty of specified ID does not exist.
 	GetKittyState(kittyID KittyID) (*KittyState, bool)
 
+	// GetKittyUnspentTx obtains the unspent tx for the kitty.
+	// It should return false if the kitty does not exist.
+	// TODO (evanlinjin): test this.
+	GetKittyUnspentTx(kittyID KittyID) (TxHash, bool)
+
 	// GetAddressState obtains the current state of an address.
 	// This consists of:
 	//		- Kitties owned by the address.
@@ -55,6 +60,18 @@ func (s *MemoryState) GetKittyState(kittyID KittyID) (*KittyState, bool) {
 
 	kState, ok := s.kitties[kittyID]
 	return kState, ok
+}
+
+func (s *MemoryState) GetKittyUnspentTx(kittyID KittyID) (TxHash, bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	kState, ok := s.kitties[kittyID]
+	if !ok {
+		return EmptyTxHash(), ok
+	}
+
+	return kState.Transactions[len(kState.Transactions)-1], true
 }
 
 func (s MemoryState) GetAddressState(address cipher.Address) *AddressState {

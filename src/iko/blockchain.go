@@ -5,11 +5,14 @@ import (
 	"gopkg.in/sirupsen/logrus.v1"
 	"os"
 	"sync"
+	"time"
+	"fmt"
+	"errors"
 )
 
 type BlockChainConfig struct {
-	CreatorPK cipher.PubKey
-	TxAction  TxAction
+	GenerationPK cipher.PubKey
+	TxAction     TxAction
 }
 
 func (cc *BlockChainConfig) Prepare() error {
@@ -18,7 +21,7 @@ func (cc *BlockChainConfig) Prepare() error {
 			return nil
 		}
 	}
-	if e := cc.CreatorPK.Verify(); e != nil {
+	if e := cc.GenerationPK.Verify(); e != nil {
 		return e
 	}
 	return nil
@@ -63,32 +66,21 @@ func NewBlockChain(config *BlockChainConfig, chainDB ChainDB, stateDB StateDB) (
 }
 
 func (bc *BlockChain) InitState() error {
-
-	var prev *Transaction
+	var check = MakeTxChecker(bc)
 	for i := uint64(1); i < bc.chain.Len(); i++ {
 
 		// Val transaction.
-		tx, e := bc.chain.GetTxOfSeq(i)
+		txWrap, e := bc.chain.GetTxOfSeq(i)
 		if e != nil {
 			return e
 		}
-		bc.log.WithField("tx", tx.String()).Infof("InitState (%d)", i)
+		bc.log.
+			WithField("tx", txWrap.Tx.String()).
+			WithField("meta", txWrap.Meta).
+			Infof("InitState (%d)", i)
 
-		// Check hash, seq and sig of tx.
-		if e := tx.Verify(prev); e != nil {
+		if e := check(&txWrap.Tx); e != nil {
 			return e
-		}
-
-		// If tx is to structured to create a kitty, attempt to add to state.
-		// Otherwise, attempt to transfer it's ownership in the state.
-		if tx.IsKittyGen(bc.c.CreatorPK) {
-			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
-				return e
-			}
-		} else {
-			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
-				return e
-			}
 		}
 	}
 	return nil
@@ -106,29 +98,32 @@ func (bc *BlockChain) service() {
 		case <-bc.quit:
 			return
 
-		case tx := <-bc.chain.TxChan():
-			if e := bc.c.TxAction(tx); e != nil {
+		case txWrap, ok := <-bc.chain.TxChan():
+			if !ok {
+				return
+			}
+			if e := bc.c.TxAction(&txWrap.Tx); e != nil {
 				panic(e)
 			}
 		}
 	}
 }
 
-func (bc *BlockChain) GetHeadTx() (Transaction, error) {
+func (bc *BlockChain) GetHeadTx() (TxWrapper, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
 	return bc.chain.Head()
 }
 
-func (bc *BlockChain) GetTxOfHash(txHash TxHash) (Transaction, error) {
+func (bc *BlockChain) GetTxOfHash(txHash TxHash) (TxWrapper, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
 	return bc.chain.GetTxOfHash(txHash)
 }
 
-func (bc *BlockChain) GetTxOfSeq(seq uint64) (Transaction, error) {
+func (bc *BlockChain) GetTxOfSeq(seq uint64) (TxWrapper, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
@@ -153,34 +148,67 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
-	return bc.chain.AddTx(*tx, MakeTxChecker(bc))
+	var seq uint64
+	if txWrap, e := bc.chain.Head(); e == nil {
+		seq = txWrap.Meta.Seq + 1
+	}
+
+	return bc.chain.AddTx(
+		TxWrapper{
+			Tx: *tx,
+			Meta: TxMeta{
+				Seq: seq,
+				TS:  time.Now().UnixNano(),
+			},
+		},
+		MakeTxChecker(bc),
+	)
 }
 
 func MakeTxChecker(bc *BlockChain) TxChecker {
 	return func(tx *Transaction) error {
-		var prev *Transaction
-		if temp, e := bc.chain.Head(); e == nil {
-			prev = &temp
+
+		// Check duplicate.
+		if _, e := bc.chain.GetTxOfHash(tx.Hash()); e == nil {
+			return fmt.Errorf("tx of hash '%s' is a duplicate",
+				tx.Hash())
 		}
-		if e := tx.Verify(prev); e != nil {
+
+		var unspent *Transaction
+		if tempHash, ok := bc.state.GetKittyUnspentTx(tx.KittyID); ok {
+			temp, e := bc.chain.GetTxOfHash(tempHash)
+			if e != nil {
+				return e
+			}
+			unspent = &temp.Tx
+		}
+
+		if e := tx.VerifyWith(unspent, bc.c.GenerationPK); e != nil {
 			return e
 		}
-		if tx.IsKittyGen(bc.c.CreatorPK) {
+		if tx.IsKittyGen(bc.c.GenerationPK) {
 			bc.log.
 				WithField("kitty_id", tx.KittyID).
-				WithField("address", tx.To.String()).
-				Debug("gen_tx")
+				WithField("input", tx.In.Hex()).
+				WithField("output", tx.Out.String()).
+				Debug("processing generation tx")
 
-			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.To); e != nil {
+			if e := bc.state.AddKitty(tx.Hash(), tx.KittyID, tx.Out); e != nil {
 				return e
 			}
 		} else {
 			bc.log.
 				WithField("kitty_id", tx.KittyID).
-				WithField("from_address", tx.From.String()).
-				WithField("to_address", tx.To.String()).
-				Debug("move_tx")
-			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, tx.From, tx.To); e != nil {
+				WithField("input", tx.In.Hex()).
+				WithField("output", tx.Out.String()).
+				Debug("processing transfer tx")
+
+			// TEMPORARY: If tx is not signed from generation pk, disallow.
+			if unspent.Out != cipher.AddressFromPubKey(bc.c.GenerationPK) {
+				return errors.New("tx rejected")
+			}
+
+			if e := bc.state.MoveKitty(tx.Hash(), tx.KittyID, unspent.Out, tx.Out); e != nil {
 				return e
 			}
 		}
@@ -190,10 +218,11 @@ func MakeTxChecker(bc *BlockChain) TxChecker {
 
 type PaginatedTransactions struct {
 	TotalPageCount uint64
-	Transactions   []Transaction
+	Transactions   []TxWrapper
 }
 
-// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
+// totalPageCount is a helper function for calculating the number of pages given
+// the number of transactions and the number of transactions per page
 func totalPageCount(len, pageSize uint64) uint64 {
 	if len%pageSize == 0 {
 		return len / pageSize
@@ -203,7 +232,7 @@ func totalPageCount(len, pageSize uint64) uint64 {
 }
 
 func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (PaginatedTransactions, error) {
-	transactions, err := bc.chain.GetTxsOfSeqRange(
+	txWrappers, err := bc.chain.GetTxsOfSeqRange(
 		uint64(perPage*currentPage),
 		perPage)
 	if err != nil {
@@ -212,6 +241,6 @@ func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (Paginated
 	cLen := bc.chain.Len()
 	return PaginatedTransactions{
 		TotalPageCount: totalPageCount(cLen, perPage),
-		Transactions:   transactions,
+		Transactions:   txWrappers,
 	}, nil
 }

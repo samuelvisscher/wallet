@@ -17,14 +17,16 @@ import (
 type MeasureChain func() uint64
 
 type CXOStore struct {
-	Meta []byte
-	Txs  registry.Refs `skyobject:"schema=iko.Transaction"`
+	Meta  []byte
+	Txs   registry.Refs `skyobject:"schema=iko.Transaction"`
+	Metas registry.Refs `skyobject:"schema=iko.TxMeta"`
 }
 
 var (
 	cxoReg = registry.NewRegistry(func(r *registry.Reg) {
 		r.Register("cipher.Address", cipher.Address{})
 		r.Register("iko.Transaction", Transaction{})
+		r.Register("iko.TxMeta", TxMeta{})
 		r.Register("iko.Store", CXOStore{})
 	})
 )
@@ -37,22 +39,22 @@ type CXOChainConfig struct {
 	CXOAddress         string
 	CXORPCAddress      string
 
-	Master      bool
-	MasterPK    cipher.PubKey
-	MasterSK    cipher.SecKey
-	MasterNonce uint64 // Public
+	MasterRooter    bool
+	MasterRootPK    cipher.PubKey
+	MasterRootSK    cipher.SecKey
+	MasterRootNonce uint64 // Public
 }
 
 func (c *CXOChainConfig) Process(log *logrus.Logger) error {
-	if e := c.MasterPK.Verify(); e != nil {
+	if e := c.MasterRootPK.Verify(); e != nil {
 		return e
 	}
 
-	if c.Master {
-		if e := c.MasterSK.Verify(); e != nil {
+	if c.MasterRooter {
+		if e := c.MasterRootSK.Verify(); e != nil {
 			return e
 		}
-		if c.MasterPK != cipher.PubKeyFromSecKey(c.MasterSK) {
+		if c.MasterRootPK != cipher.PubKeyFromSecKey(c.MasterRootSK) {
 			return errors.New("public and secret keys do not match")
 		}
 	}
@@ -65,8 +67,8 @@ type CXOChain struct {
 	l        *logrus.Logger
 	node     *node.Node
 	wg       sync.WaitGroup
-	received chan *Transaction
-	accepted chan *Transaction
+	received chan *TxWrapper
+	accepted chan *TxWrapper
 
 	len util.SafeInt
 }
@@ -85,8 +87,8 @@ func NewCXOChain(config *CXOChainConfig) (*CXOChain, error) {
 	chain := &CXOChain{
 		c:        config,
 		l:        log,
-		received: make(chan *Transaction),
-		accepted: make(chan *Transaction),
+		received: make(chan *TxWrapper),
+		accepted: make(chan *TxWrapper),
 	}
 
 	if e := prepareNode(chain); e != nil {
@@ -135,18 +137,18 @@ func prepareNode(chain *CXOChain) error {
 		defer chain.lock()()
 
 		switch {
-		case r.Pub != chain.c.MasterPK:
+		case r.Pub != chain.c.MasterRootPK:
 			e := errors.New("received root is not of master public key")
 			chain.l.
-				WithField("master_pk", chain.c.MasterPK.Hex()).
+				WithField("master_pk", chain.c.MasterRootPK.Hex()).
 				WithField("received_pk", r.Pub.Hex()).
 				Warning(e.Error())
 			return e
 
-		case r.Nonce != chain.c.MasterNonce:
+		case r.Nonce != chain.c.MasterRootNonce:
 			e := errors.New("received root is not of master nonce")
 			chain.l.
-				WithField("master_nonce", chain.c.MasterNonce).
+				WithField("master_nonce", chain.c.MasterRootNonce).
 				WithField("received_nonce", r.Nonce).
 				Warning(e.Error())
 			return e
@@ -158,7 +160,6 @@ func prepareNode(chain *CXOChain) error {
 
 		default:
 			return nil
-
 		}
 	}
 
@@ -192,16 +193,24 @@ func prepareNode(chain *CXOChain) error {
 			}
 
 			for i := c.len.Val(); i < rLen; i++ {
-				var tx = new(Transaction)
-				hash, e := store.Txs.ValueByIndex(p, int(i), tx)
+
+				var wrapper = new(TxWrapper)
+
+				txHash, e := store.Txs.ValueByIndex(p, int(i), &wrapper.Tx)
 				if e != nil {
 					return e
 				}
+
+				_, e = store.Metas.ValueByIndex(p, int(i), &wrapper.Meta)
+				if e != nil {
+					return e
+				}
+
 				c.l.
-					WithField("tx_hash", hash.Hex()).
+					WithField("tx_hash", txHash.Hex()).
 					WithField("tx_seq", i).
 					Info("received new transaction")
-				c.received <- tx
+				c.received <- wrapper
 			}
 
 			return nil
@@ -228,7 +237,7 @@ func prepareNode(chain *CXOChain) error {
 		return e
 	}
 
-	if e := chain.node.Share(chain.c.MasterPK); e != nil {
+	if e := chain.node.Share(chain.c.MasterRootPK); e != nil {
 		return e
 	}
 
@@ -242,16 +251,16 @@ func (c *CXOChain) RunTxService(txChecker TxChecker) error {
 	go func() {
 		for {
 			select {
-			case tx, ok := <-c.received:
+			case txWrapper, ok := <-c.received:
 				if !ok {
 					return
 
-				} else if e := txChecker(tx); e != nil {
-					c.l.Warning(e.Error())
+				} else if e := txChecker(&txWrapper.Tx); e != nil {
+					c.l.Error(e.Error())
 
 				} else {
-					c.len.Set(int(tx.Seq) + 1)
-					c.accepted <- tx
+					c.len.Inc()
+					c.accepted <- txWrapper
 				}
 			}
 		}
@@ -280,8 +289,8 @@ func (c *CXOChain) InitChain() error {
 	r := &registry.Root{
 		Refs:  []registry.Dynamic{sReg},
 		Reg:   cxoReg.Reference(),
-		Pub:   c.c.MasterPK,
-		Nonce: c.c.MasterNonce,
+		Pub:   c.c.MasterRootPK,
+		Nonce: c.c.MasterRootNonce,
 	}
 
 	if e := c.node.Container().Save(up, r); e != nil {
@@ -293,25 +302,28 @@ func (c *CXOChain) InitChain() error {
 	return nil
 }
 
-func (c *CXOChain) Head() (Transaction, error) {
+func (c *CXOChain) Head() (TxWrapper, error) {
 	defer c.lock()()
 	var (
-		tx   Transaction
-		cLen = c.len.Val()
+		txWrap TxWrapper
+		cLen   = c.len.Val()
 	)
 
 	if cLen < 1 {
-		return Transaction{}, errors.New("no transactions available")
+		return txWrap, errors.New("no transactions available")
 	}
 
 	store, _, p, e := c.getStore(gsRead)
 	if e != nil {
-		return tx, e
+		return txWrap, e
 	}
-	if _, e := store.Txs.ValueByIndex(p, cLen-1, &tx); e != nil {
-		return Transaction{}, e
+	if _, e := store.Txs.ValueByIndex(p, cLen-1, &txWrap.Tx); e != nil {
+		return txWrap, e
 	}
-	return tx, nil
+	if _, e := store.Metas.ValueByIndex(p, cLen-1, &txWrap.Meta); e != nil {
+		return txWrap, e
+	}
+	return txWrap, nil
 }
 
 func (c *CXOChain) Len() uint64 {
@@ -319,11 +331,11 @@ func (c *CXOChain) Len() uint64 {
 	return uint64(c.len.Val())
 }
 
-func (c *CXOChain) AddTx(tx Transaction, check TxChecker) error {
-	if c.c.Master == false {
+func (c *CXOChain) AddTx(txWrap TxWrapper, check TxChecker) error {
+	if c.c.MasterRooter == false {
 		return errors.New("not master node")
 	}
-	if e := check(&tx); e != nil {
+	if e := check(&txWrap.Tx); e != nil {
 		c.l.WithError(e).Error("failed")
 		return e
 	}
@@ -335,7 +347,10 @@ func (c *CXOChain) AddTx(tx Transaction, check TxChecker) error {
 	if e != nil {
 		return e
 	}
-	if e := store.Txs.AppendValues(up, tx); e != nil {
+	if e := store.Txs.AppendValues(up, txWrap.Tx); e != nil {
+		return e
+	}
+	if e := store.Metas.AppendValues(up, txWrap.Meta); e != nil {
 		return e
 	}
 	if e := r.Refs[0].SetValue(up, store); e != nil {
@@ -349,70 +364,91 @@ func (c *CXOChain) AddTx(tx Transaction, check TxChecker) error {
 	return nil
 }
 
-func (c *CXOChain) GetTxOfHash(hash TxHash) (Transaction, error) {
+func (c *CXOChain) GetTxOfHash(hash TxHash) (TxWrapper, error) {
 	defer c.lock()()
-	var tx Transaction
+	var txWrap TxWrapper
 
 	store, _, p, e := c.getStore(gsRead)
 	if e != nil {
-		return tx, e
+		return txWrap, e
 	}
-	if e := store.Txs.ValueByHash(p, cipher.SHA256(hash), &tx); e != nil {
-		return tx, e
+	i, e := store.Txs.ValueOfHashWithIndex(p, cipher.SHA256(hash), &txWrap.Tx)
+	if e != nil {
+		return txWrap, e
 	}
-	return tx, nil
+	if _, e := store.Metas.ValueByIndex(p, i, &txWrap.Meta); e != nil {
+		return txWrap, e
+	}
+	return txWrap, nil
 }
 
-func (c *CXOChain) GetTxOfSeq(seq uint64) (Transaction, error) {
+func (c *CXOChain) GetTxOfSeq(seq uint64) (TxWrapper, error) {
 	defer c.lock()()
-	var tx Transaction
+	var txWrap TxWrapper
 
 	store, _, p, e := c.getStore(gsRead)
 	if e != nil {
-		return tx, e
+		return txWrap, e
 	}
-	if _, e := store.Txs.ValueByIndex(p, int(seq), &tx); e != nil {
-		return tx, e
+	if _, e := store.Txs.ValueByIndex(p, int(seq), &txWrap.Tx); e != nil {
+		return txWrap, e
 	}
-	return tx, nil
+	if _, e := store.Metas.ValueByIndex(p, int(seq), &txWrap.Meta); e != nil {
+		return txWrap, e
+	}
+	return txWrap, nil
 }
 
-func (c *CXOChain) TxChan() <-chan *Transaction {
+func (c *CXOChain) TxChan() <-chan *TxWrapper {
 	return c.accepted
 }
 
-func (c *CXOChain) GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]Transaction, error) {
+func (c *CXOChain) GetTxsOfSeqRange(startSeq uint64, pageSize uint64) ([]TxWrapper, error) {
 	defer c.lock()()
-	var txs []Transaction
+	var txWraps []TxWrapper
 
 	if pageSize == 0 {
-		return txs, fmt.Errorf("invalid pageSize: %d", pageSize)
+		return txWraps, fmt.Errorf("invalid pageSize: %d", pageSize)
 	}
 	cLen := uint64(c.len.Val())
 	if startSeq >= cLen {
-		return txs, fmt.Errorf("invalid startSeq: %d", startSeq)
+		return txWraps, fmt.Errorf("invalid startSeq: %d", startSeq)
 	}
 	store, _, p, e := c.getStore(gsRead)
 	if e != nil {
-		return txs, e
+		return txWraps, e
 	}
-	refs, e := store.Txs.Slice(p, int(startSeq), int(startSeq+pageSize))
+	txRefs, e := store.Txs.Slice(p, int(startSeq), int(startSeq+pageSize))
 	if e != nil {
-		return txs, e
+		return txWraps, e
 	}
-	refsLen, e := refs.Len(p)
+	refsLen, e := txRefs.Len(p)
 	if e != nil {
-		return txs, e
+		return txWraps, e
 	}
-	txs = make([]Transaction, refsLen)
-	e = refs.Ascend(p, func(i int, hash cipher.SHA256) error {
+	metaRefs, e := store.Metas.Slice(p, int(startSeq), int(startSeq+pageSize))
+	if e != nil {
+		return txWraps, e
+	}
+	txWraps = make([]TxWrapper, refsLen)
+	e = txRefs.Ascend(p, func(i int, hash cipher.SHA256) error {
 		raw, _, e := c.node.Container().Get(hash, 0)
 		if e != nil {
 			return e
 		}
-		return encoder.DeserializeRaw(raw, &txs[i])
+		return encoder.DeserializeRaw(raw, &txWraps[i].Tx)
 	})
-	return txs, e
+	if e != nil {
+		return txWraps, e
+	}
+	e = metaRefs.Ascend(p, func(i int, hash cipher.SHA256) error {
+		raw, _, e := c.node.Container().Get(hash, 0)
+		if e != nil {
+			return e
+		}
+		return encoder.DeserializeRaw(raw, &txWraps[i].Meta)
+	})
+	return txWraps, e
 }
 
 type getStoreType int
@@ -452,7 +488,7 @@ func (c *CXOChain) getStore(t getStoreType) (*CXOStore, *registry.Root, registry
 */
 
 func cxoRoot(c *CXOChain) (*registry.Root, error) {
-	r, e := c.node.Container().LastRoot(c.c.MasterPK, c.c.MasterNonce)
+	r, e := c.node.Container().LastRoot(c.c.MasterRootPK, c.c.MasterRootNonce)
 	if e != nil {
 		return nil, e
 	}
@@ -480,10 +516,10 @@ func cxoPack(c *CXOChain, r *registry.Root) (*skyobject.Pack, error) {
 }
 
 func cxoUnpack(c *CXOChain) (*skyobject.Unpack, error) {
-	if c.c.Master == false {
+	if c.c.MasterRooter == false {
 		return nil, errors.New("not master")
 	}
-	return c.node.Container().Unpack(c.c.MasterSK, cxoReg)
+	return c.node.Container().Unpack(c.c.MasterRootSK, cxoReg)
 }
 
 func cxoNewStore(up *skyobject.Unpack, s *CXOStore) (registry.Dynamic, error) {
