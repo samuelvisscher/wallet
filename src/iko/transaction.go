@@ -39,7 +39,20 @@ type Transaction struct {
 	Sig     cipher.Sig
 }
 
-// NewGenTx creates a "gen" transaction. This is where a kitty is created on the blockchain.
+// TxMeta records meta information for a transaction.
+type TxMeta struct {
+	Seq uint64
+	TS  int64
+}
+
+// TxWrapper wraps a transaction with it's meta information.
+type TxWrapper struct {
+	Tx   Transaction
+	Meta TxMeta
+}
+
+// NewGenTx creates a "generation" transaction.
+// This is where a kitty is created on the blockchain.
 func NewGenTx(kittyID KittyID, sk cipher.SecKey) *Transaction {
 	var (
 		address = cipher.AddressFromSecKey(sk)

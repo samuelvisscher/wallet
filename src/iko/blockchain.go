@@ -5,6 +5,7 @@ import (
 	"gopkg.in/sirupsen/logrus.v1"
 	"os"
 	"sync"
+	"time"
 )
 
 type BlockChainConfig struct {
@@ -67,15 +68,16 @@ func (bc *BlockChain) InitState() error {
 	for i := uint64(1); i < bc.chain.Len(); i++ {
 
 		// Val transaction.
-		tx, e := bc.chain.GetTxOfSeq(i)
+		txWrap, e := bc.chain.GetTxOfSeq(i)
 		if e != nil {
 			return e
 		}
 		bc.log.
-			WithField("tx", tx.String()).
+			WithField("tx", txWrap.Tx.String()).
+			WithField("meta", txWrap.Meta).
 			Infof("InitState (%d)", i)
 
-		if e := check(&tx); e != nil {
+		if e := check(&txWrap.Tx); e != nil {
 			return e
 		}
 	}
@@ -94,29 +96,29 @@ func (bc *BlockChain) service() {
 		case <-bc.quit:
 			return
 
-		case tx := <-bc.chain.TxChan():
-			if e := bc.c.TxAction(tx); e != nil {
+		case txWrap := <-bc.chain.TxChan():
+			if e := bc.c.TxAction(&txWrap.Tx); e != nil {
 				panic(e)
 			}
 		}
 	}
 }
 
-func (bc *BlockChain) GetHeadTx() (Transaction, error) {
+func (bc *BlockChain) GetHeadTx() (TxWrapper, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
 	return bc.chain.Head()
 }
 
-func (bc *BlockChain) GetTxOfHash(txHash TxHash) (Transaction, error) {
+func (bc *BlockChain) GetTxOfHash(txHash TxHash) (TxWrapper, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
 	return bc.chain.GetTxOfHash(txHash)
 }
 
-func (bc *BlockChain) GetTxOfSeq(seq uint64) (Transaction, error) {
+func (bc *BlockChain) GetTxOfSeq(seq uint64) (TxWrapper, error) {
 	bc.mux.RLock()
 	defer bc.mux.RUnlock()
 
@@ -141,7 +143,21 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
-	return bc.chain.AddTx(*tx, MakeTxChecker(bc))
+	var seq uint64
+	if txWrap, e := bc.chain.Head(); e == nil {
+		seq = txWrap.Meta.Seq + 1
+	}
+
+	return bc.chain.AddTx(
+		TxWrapper{
+			Tx: *tx,
+			Meta: TxMeta{
+				Seq: seq,
+				TS:  time.Now().UnixNano(),
+			},
+		},
+		MakeTxChecker(bc),
+	)
 }
 
 func MakeTxChecker(bc *BlockChain) TxChecker {
@@ -152,7 +168,7 @@ func MakeTxChecker(bc *BlockChain) TxChecker {
 			if e != nil {
 				return e
 			}
-			unspent = &temp
+			unspent = &temp.Tx
 		}
 		if e := tx.Verify(unspent, bc.c.CreatorPK); e != nil {
 			return e
@@ -184,10 +200,11 @@ func MakeTxChecker(bc *BlockChain) TxChecker {
 
 type PaginatedTransactions struct {
 	TotalPageCount uint64
-	Transactions   []Transaction
+	Transactions   []TxWrapper
 }
 
-// totalPageCount is a helper function for calculating the number of pages given the number of transactions and the number of transactions per page
+// totalPageCount is a helper function for calculating the number of pages given
+// the number of transactions and the number of transactions per page
 func totalPageCount(len, pageSize uint64) uint64 {
 	if len%pageSize == 0 {
 		return len / pageSize
@@ -197,7 +214,7 @@ func totalPageCount(len, pageSize uint64) uint64 {
 }
 
 func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (PaginatedTransactions, error) {
-	transactions, err := bc.chain.GetTxsOfSeqRange(
+	txWrappers, err := bc.chain.GetTxsOfSeqRange(
 		uint64(perPage*currentPage),
 		perPage)
 	if err != nil {
@@ -206,6 +223,6 @@ func (bc *BlockChain) GetTransactionPage(currentPage, perPage uint64) (Paginated
 	cLen := bc.chain.Len()
 	return PaginatedTransactions{
 		TotalPageCount: totalPageCount(cLen, perPage),
-		Transactions:   transactions,
+		Transactions:   txWrappers,
 	}, nil
 }

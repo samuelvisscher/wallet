@@ -91,8 +91,8 @@ func getAddress(g *iko.BlockChain) HandlerFunc {
 type TxMeta struct {
 	Hash string `json:"hash"`
 	Raw  string `json:"raw"`
-	Seq  uint64 `json:"seq(io be implemented)"` // TODO
-	TS   int64   `json:"ts(to be implemented)"` // TODO
+	Seq  uint64 `json:"seq"`
+	TS   int64  `json:"ts"`
 }
 
 type Tx struct {
@@ -107,24 +107,26 @@ type TxReply struct {
 	Tx   Tx     `json:"transaction"`
 }
 
-func NewTxReplyOfTransaction(tx iko.Transaction) TxReply {
+func NewTxReplyOfTransaction(txWrap iko.TxWrapper) TxReply {
 	return TxReply{
 		Meta: TxMeta{
-			Hash: tx.Hash().Hex(),
-			Raw:  hex.EncodeToString(tx.Serialize()),
+			Hash: txWrap.Tx.Hash().Hex(),
+			Raw:  hex.EncodeToString(txWrap.Tx.Serialize()),
+			Seq:  txWrap.Meta.Seq,
+			TS:   txWrap.Meta.TS,
 		},
 		Tx: Tx{
-			KittyID: tx.KittyID,
-			In:      tx.In.Hex(),
-			Out:     tx.Out.String(),
-			Sig:     tx.Sig.Hex(),
+			KittyID: txWrap.Tx.KittyID,
+			In:      txWrap.Tx.In.Hex(),
+			Out:     txWrap.Tx.Out.String(),
+			Sig:     txWrap.Tx.Sig.Hex(),
 		},
 	}
 }
 
 func getTx(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		var tx iko.Transaction
+		var txWrap iko.TxWrapper
 		ok, e := SwitchReqQuery(w, r, RqHash, ReqQueryActions{
 			RqHash: func() (bool, error) {
 				txHash, e := cipher.SHA256FromHex(p.Base)
@@ -132,7 +134,7 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 					return false, sendJson(w, http.StatusBadRequest,
 						e.Error())
 				}
-				if tx, e = g.GetTxOfHash(iko.TxHash(txHash)); e != nil {
+				if txWrap, e = g.GetTxOfHash(iko.TxHash(txHash)); e != nil {
 					return false, sendJson(w, http.StatusNotFound,
 						e.Error())
 				}
@@ -144,7 +146,7 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 					return false, sendJson(w, http.StatusBadRequest,
 						e.Error())
 				}
-				if tx, e = g.GetTxOfSeq(seq); e != nil {
+				if txWrap, e = g.GetTxOfSeq(seq); e != nil {
 					return false, sendJson(w, http.StatusNotFound,
 						e.Error())
 				}
@@ -156,11 +158,11 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 		}
 		return SwitchTypeQuery(w, r, TqJson, TypeQueryActions{
 			TqJson: func() error {
-				return sendJson(w, http.StatusOK, NewTxReplyOfTransaction(tx))
+				return sendJson(w, http.StatusOK, NewTxReplyOfTransaction(txWrap))
 			},
 			TqEnc: func() error {
 				return sendBin(w, http.StatusOK,
-					tx.Serialize())
+					txWrap.Tx.Serialize())
 			},
 		})
 	}
@@ -168,7 +170,7 @@ func getTx(g *iko.BlockChain) HandlerFunc {
 
 func getHeadTx(g *iko.BlockChain) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
-		tx, e := g.GetHeadTx()
+		txWrap, e := g.GetHeadTx()
 		if e != nil {
 			return sendJson(w, http.StatusNotFound,
 				e.Error())
@@ -176,11 +178,11 @@ func getHeadTx(g *iko.BlockChain) HandlerFunc {
 		return SwitchTypeQuery(w, r, TqJson, TypeQueryActions{
 			TqJson: func() error {
 				return sendJson(w, http.StatusOK,
-					NewTxReplyOfTransaction(tx))
+					NewTxReplyOfTransaction(txWrap))
 			},
 			TqEnc: func() error {
 				return sendBin(w, http.StatusOK,
-					tx.Serialize())
+					txWrap.Tx.Serialize())
 			},
 		})
 	}
@@ -224,6 +226,7 @@ func injectTx(g *iko.BlockChain) HandlerFunc {
 				fmt.Sprintf("content type '%s' is not supported, expecting '%s'",
 					contentType, []string{"application/json", "application/octet-stream"}))
 		}
+
 		if e := g.InjectTx(tx); e != nil {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
