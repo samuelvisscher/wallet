@@ -318,7 +318,7 @@
 						"header": [],
 						"body": {},
 						"url": {
-							"raw": "{{domain}}/api/iko/tx/b40c5885d76bc85ae37b40c34b559af8ad511a4391e2fc0eb41b56a00b39f66c?type=enc&request=hash",
+							"raw": "{{domain}}/api/iko/tx/0?type=json&request=seq",
 							"host": [
 								"{{domain}}"
 							],
@@ -326,18 +326,18 @@
 								"api",
 								"iko",
 								"tx",
-								"b40c5885d76bc85ae37b40c34b559af8ad511a4391e2fc0eb41b56a00b39f66c"
+								"0"
 							],
 							"query": [
 								{
 									"key": "type",
-									"value": "enc",
+									"value": "json",
 									"equals": true,
 									"description": "Type of output. \"json\" or \"enc\""
 								},
 								{
 									"key": "request",
-									"value": "hash",
+									"value": "seq",
 									"equals": true,
 									"description": "Type of request. \"hash\" or \"seq\""
 								}
@@ -434,6 +434,34 @@
 								"api",
 								"iko",
 								"inject_tx"
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Get Balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {},
+						"url": {
+							"raw": "{{domain}}/api/iko/balance?addrs=2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"api",
+								"iko",
+								"balance"
+							],
+							"query": [
+								{
+									"key": "addrs",
+									"value": "2fzr9thfdgHCWe8Hp9btr3nNEVTaAmkDk7",
+									"equals": true
+								}
 							]
 						},
 						"description": ""

@@ -10,11 +10,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func ikoGateway(m *http.ServeMux, g *iko.BlockChain) error {
 	Handle(m, "/api/iko/kitty/", "GET", getKitty(g))
 	Handle(m, "/api/iko/address/", "GET", getAddress(g))
+	Handle(m, "/api/iko/balance", "GET", getBalance(g))
 	Handle(m, "/api/iko/tx/", "GET", getTx(g))
 	Handle(m, "/api/iko/head_tx", "GET", getHeadTx(g))
 	Handle(m, "/api/iko/txs", "GET", getPaginatedTxs(g))
@@ -60,7 +62,7 @@ func getKitty(g *iko.BlockChain) HandlerFunc {
 type AddressReply struct {
 	Address      string       `json:"address"`
 	Kitties      iko.KittyIDs `json:"kitties"`
-	Transactions []string     `json:"transactions"`
+	Transactions []string     `json:"transactions,omitempty"`
 }
 
 func getAddress(g *iko.BlockChain) HandlerFunc {
@@ -85,6 +87,35 @@ func getAddress(g *iko.BlockChain) HandlerFunc {
 					aState.Serialize())
 			},
 		})
+	}
+}
+
+type BalanceReply struct {
+	KittyCount int                     `json:"kitty_count"`
+	Kitties    iko.KittyIDs            `json:"kitties"`
+	PerAddress map[string]BalanceReply `json:"per_address,omitempty"`
+}
+
+func getBalance(g *iko.BlockChain) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, p *Path) error {
+		var (
+			qAddrs = r.URL.Query().Get("addrs")
+		)
+		addrs, e := toAddressArray(splitStr(qAddrs))
+		if e != nil {
+			return sendJson(w, http.StatusBadRequest,
+				fmt.Sprintf("Error: %s", e.Error()))
+		}
+		var reply = BalanceReply{
+			Kitties: make([]iko.KittyID, len(addrs)),
+		}
+		for _, addr := range addrs {
+			aState := g.GetAddressState(addr)
+			reply.KittyCount += len(aState.Kitties)
+			reply.Kitties = append(reply.Kitties, aState.Kitties...)
+		}
+		reply.Kitties.Sort()
+		return sendJson(w, http.StatusOK, reply)
 	}
 }
 
@@ -273,4 +304,31 @@ func getPaginatedTxs(g *iko.BlockChain) HandlerFunc {
 		return sendJson(w, http.StatusOK,
 			paginatedTxsReply)
 	}
+}
+
+/*
+	<<< HELPER FUNCTIONS >>>
+*/
+
+func splitStr(in string) []string {
+	out := strings.Split(in, ",")
+	for i := len(out) - 1; i >= 0; i-- {
+		if out[i] == "" {
+			out = append(out[:i], out[i+1:]...)
+		}
+	}
+	return out
+}
+
+func toAddressArray(in []string) ([]cipher.Address, error) {
+	out := make([]cipher.Address, len(in))
+	for i, vStr := range in {
+		address, e := cipher.DecodeBase58Address(vStr)
+		if e != nil {
+			return nil, fmt.Errorf("invalid address '%s' at index '%d'",
+				vStr, i)
+		}
+		out[i] = address
+	}
+	return out, nil
 }
