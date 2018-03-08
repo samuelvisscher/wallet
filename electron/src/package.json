@@ -1,7 +1,7 @@
 {
   "main": "electron-main.js",
   "license": "MIT",
-  "description": "skycoin wallet",
+  "description": "KittyCash wallet",
   "dependencies": {
     "cat-names": "^1.0.2",
     "electron-context-menu": "^0.9.1",
