@@ -1,13 +1,13 @@
 package iko
 
 import (
+	"errors"
+	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/sirupsen/logrus.v1"
 	"os"
 	"sync"
 	"time"
-	"fmt"
-	"errors"
 )
 
 type BlockChainConfig struct {
@@ -87,6 +87,7 @@ func (bc *BlockChain) InitState() error {
 }
 
 func (bc *BlockChain) Close() {
+	bc.log.Info("closing blockchain manager")
 	close(bc.quit)
 }
 
@@ -144,7 +145,7 @@ func (bc *BlockChain) GetAddressState(address cipher.Address) *AddressState {
 	return bc.state.GetAddressState(address)
 }
 
-func (bc *BlockChain) InjectTx(tx *Transaction) error {
+func (bc *BlockChain) InjectTx(tx *Transaction) (*TxMeta, error) {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
@@ -153,13 +154,15 @@ func (bc *BlockChain) InjectTx(tx *Transaction) error {
 		seq = txWrap.Meta.Seq + 1
 	}
 
-	return bc.chain.AddTx(
+	meta := TxMeta{
+		Seq: seq,
+		TS:  time.Now().UnixNano(),
+	}
+
+	return &meta, bc.chain.AddTx(
 		TxWrapper{
-			Tx: *tx,
-			Meta: TxMeta{
-				Seq: seq,
-				TS:  time.Now().UnixNano(),
-			},
+			Tx:   *tx,
+			Meta: meta,
 		},
 		MakeTxChecker(bc),
 	)
