@@ -226,7 +226,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	if doInit || testMode {
-		if e := cxoChain.InitChain(); e != nil {
+		if e := cxoChain.MasterInitChain(); e != nil {
 			return e
 		}
 	}

@@ -95,6 +95,10 @@ func NewCXOChain(config *CXOChainConfig) (*CXOChain, error) {
 		return nil, e
 	}
 
+	if e := initChain(chain); e != nil {
+		log.WithError(e).Info("blockchain not downloaded")
+	}
+
 	return chain, nil
 }
 
@@ -159,6 +163,7 @@ func prepareNode(chain *CXOChain) error {
 			return e
 
 		default:
+			chain.l.Info("blockchain syncing")
 			return nil
 		}
 	}
@@ -213,6 +218,7 @@ func prepareNode(chain *CXOChain) error {
 				c.received <- wrapper
 			}
 
+			chain.l.Info("blockchain synced")
 			return nil
 
 		}(chain, n, r)
@@ -268,11 +274,40 @@ func (c *CXOChain) RunTxService(txChecker TxChecker) error {
 	return nil
 }
 
+func initChain(c *CXOChain) error {
+	defer c.lock()()
+
+	r, e := cxoRoot(c)
+	if e != nil {
+		return e
+	}
+
+	p, e := cxoPack(c, r)
+	if e != nil {
+		return e
+	}
+
+	store, e := cxoGetStore(r, p)
+	if e != nil {
+		return e
+	}
+
+	sLen, e := store.Txs.Len(p)
+	if e != nil {
+		return e
+	}
+
+	c.len.Set(sLen)
+	return nil
+}
+
 /*
 	<<< PUBLIC FUNCTIONS >>>
 */
 
-func (c *CXOChain) InitChain() error {
+
+
+func (c *CXOChain) MasterInitChain() error {
 	defer c.lock()()
 
 	up, e := cxoUnpack(c)
