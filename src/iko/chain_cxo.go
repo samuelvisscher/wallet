@@ -110,6 +110,7 @@ func (c *CXOChain) Close() {
 		c.l.WithError(e).
 			Error("error on cxo node close")
 	}
+	c.l.Print("closed CXO chain DB")
 }
 
 /*
@@ -304,8 +305,6 @@ func initChain(c *CXOChain) error {
 /*
 	<<< PUBLIC FUNCTIONS >>>
 */
-
-
 
 func (c *CXOChain) MasterInitChain() error {
 	defer c.lock()()

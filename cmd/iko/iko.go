@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/kittycash/wallet/src/http"
 	"github.com/kittycash/wallet/src/iko"
+	"github.com/kittycash/wallet/src/rpc"
 	"github.com/kittycash/wallet/src/wallet"
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/sirupsen/logrus.v1"
@@ -36,6 +37,9 @@ const (
 	TLS         = "tls"
 	TLSCert     = "tls-cert"
 	TLSKey      = "tls-key"
+
+	RPCAddress  = "rpc-address"
+	RemoteClose = "remote-close"
 )
 
 func Flag(flag string, short ...string) string {
@@ -147,6 +151,18 @@ func init() {
 			Name:  Flag(TLSKey),
 			Usage: "tls key file path",
 		},
+		/*
+			<<< RPC SERVER >>>
+		*/
+		cli.StringFlag{
+			Name:  Flag(RPCAddress),
+			Usage: "address used to serve rpc, keep empty to not serve rpc",
+			Value: "[::]:7123", // TODO: determine default value.
+		},
+		cli.BoolFlag{
+			Name:  Flag(RemoteClose),
+			Usage: "whether to enable remote close",
+		},
 	}
 	app.Action = cli.ActionFunc(action)
 }
@@ -177,6 +193,9 @@ func action(ctx *cli.Context) error {
 		tls         = ctx.Bool(TLS)
 		tlsCert     = ctx.String(TLSCert)
 		tlsKey      = ctx.String(TLSKey)
+
+		rpcAddress = ctx.String(RPCAddress)
+		remoteClose = ctx.Bool(RemoteClose)
 	)
 
 	var (
@@ -242,7 +261,7 @@ func action(ctx *cli.Context) error {
 			log.WithField("tx", tx.String()).
 				Debugf("test:tx_inject(%d)", i)
 
-			if e := bc.InjectTx(tx); e != nil {
+			if _, e := bc.InjectTx(tx); e != nil {
 				return e
 			}
 		}
@@ -250,7 +269,6 @@ func action(ctx *cli.Context) error {
 
 	// Prepare wallet.
 	if testMode {
-
 		tempDir, e := ioutil.TempDir(os.TempDir(), "kc")
 		if e != nil {
 			return e
@@ -285,6 +303,22 @@ func action(ctx *cli.Context) error {
 		return e
 	}
 	defer httpServer.Close()
+
+	// Prepare rpc server.
+	rpcServer, e := rpc.NewServer(
+		&rpc.ServerConfig{
+			Address: rpcAddress,
+			EnableRemoteQuit: remoteClose,
+		},
+		&rpc.Gateway{
+			IKO:      bc,
+			QuitChan: quit,
+		},
+	)
+	if e != nil {
+		return e
+	}
+	defer rpcServer.Close()
 
 	<-quit
 	return nil

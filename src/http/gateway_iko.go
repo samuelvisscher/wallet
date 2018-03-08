@@ -258,12 +258,12 @@ func injectTx(g *iko.BlockChain) HandlerFunc {
 					contentType, []string{"application/json", "application/octet-stream"}))
 		}
 
-		if e := g.InjectTx(tx); e != nil {
+		meta, e := g.InjectTx(tx)
+		if e != nil {
 			return sendJson(w, http.StatusBadRequest,
 				e.Error())
 		}
-		return sendJson(w, http.StatusOK,
-			true)
+		return sendJson(w, http.StatusOK, meta)
 	}
 }
 
