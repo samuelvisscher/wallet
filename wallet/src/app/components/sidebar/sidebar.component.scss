@@ -1,0 +1,11 @@
+@import '../../../assets/scss/_variables.scss';
+
+:host {
+  padding: 0 30px;
+}
+
+button {
+  border: $primary-color 2px solid;
+  border-radius: 8px;
+  margin-top: 40px;
+}
