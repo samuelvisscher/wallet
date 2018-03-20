@@ -12,9 +12,10 @@ import { ShowSeedComponent } from './components/create-wallet/show-seed/show-see
 import { FeedComponent } from './components/feed/feed.component';
 import { BreedComponent } from './components/breed/breed.component';
 import { KittenDetailComponent } from './components/kitten-detail/kitten-detail.component';
-
+import { RouterModule } from '@angular/router';
 import { AppRoutes } from './app.routes';
 import { ApiService, AppService, WalletService } from './services';
+import './rxjs-operators';
 
 @NgModule({
   declarations: [
