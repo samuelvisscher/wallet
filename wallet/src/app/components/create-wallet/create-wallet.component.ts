@@ -7,9 +7,14 @@ import { Component, OnInit } from '@angular/core';
 })
 export class CreateWalletComponent implements OnInit {
 
+  step = 1;
+
   constructor() { }
 
   ngOnInit() {
   }
 
+  handleStepOne(values: any) {
+    this.step = 2;
+  }
 }

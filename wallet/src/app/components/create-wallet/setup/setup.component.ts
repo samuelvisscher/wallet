@@ -8,6 +8,7 @@ import { Component, OnInit } from '@angular/core';
 export class SetupComponent implements OnInit {
 
   constructor() { }
+  @Output() onSubmit = new EventEmitter();
 
   ngOnInit() {
   }
