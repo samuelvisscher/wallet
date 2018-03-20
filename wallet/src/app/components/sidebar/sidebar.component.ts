@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { WalletService } from '../../services';
 
 @Component({
   selector: 'app-sidebar',

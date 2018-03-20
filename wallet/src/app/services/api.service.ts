@@ -13,7 +13,7 @@ export class ApiService {
   ) { }
 
   getWalletsList(): Observable<Wallet[]> {
-    return this.get('wallets/list');
+    return this.get('wallets/list').map(response => response.wallets);
   }
 
   private get(url, params = null, options = {}) {
