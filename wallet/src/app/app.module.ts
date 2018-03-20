@@ -1,7 +1,5 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
-
-
 import { AppComponent } from './app.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { WalletComponent } from './components/wallet/wallet.component';
@@ -15,6 +13,8 @@ import { FeedComponent } from './components/feed/feed.component';
 import { BreedComponent } from './components/breed/breed.component';
 import { KittenDetailComponent } from './components/kitten-detail/kitten-detail.component';
 
+import { AppRoutes } from './app.routes';
+import { ApiService, AppService, WalletService } from './services';
 
 @NgModule({
   declarations: [
@@ -29,10 +29,12 @@ import { KittenDetailComponent } from './components/kitten-detail/kitten-detail.
     ShowSeedComponent,
     FeedComponent,
     BreedComponent,
-    KittenDetailComponent
+    KittenDetailComponent,
   ],
   imports: [
-    BrowserModule
+    BrowserModule,
+    RouterModule.forRoot(AppRoutes),
+  ],
   providers: [
     AppService,
     ApiService,
