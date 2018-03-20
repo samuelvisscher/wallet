@@ -1,0 +1,13 @@
+.-container {
+  display: flex;
+  width: 100%;
+
+  app-sidebar {
+    width: 150px;
+  }
+
+  app-wallet {
+    background-color: #F7F7F7;
+    flex: 1;
+  }
+}
