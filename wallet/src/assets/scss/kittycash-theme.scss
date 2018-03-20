@@ -10,19 +10,47 @@
 // Be sure that you only ever include this mixin once!
 @include mat-core();
 
+$mat-primary: (
+  50: #FFF3F2,
+  100: #FFDFDD,
+  300: #FFBFBB,
+  400: #FF9F99,
+  500: #FF7E76,
+  600: #D96B64,
+  700: #BF5F59,
+  800: #803F3B,
+  900: #40201E,
+  contrast: (
+    50: $dark-primary-text,
+    100: $dark-primary-text,
+    200: $dark-primary-text,
+    300: $dark-primary-text,
+    400: $dark-primary-text,
+    500: $dark-primary-text,
+    600: $dark-primary-text,
+    700: $dark-primary-text,
+    800: $dark-primary-text,
+    900: $dark-primary-text,
+    A100: $dark-primary-text,
+    A200: $dark-primary-text,
+    A400: $dark-primary-text,
+    A700: $dark-primary-text,
+  )
+);
+
 // Define the palettes for your theme using the Material Design palettes available in palette.scss
 // (imported above). For each palette, you can optionally specify a default, lighter, and darker
 // hue. Available color palettes: https://www.google.com/design/spec/style/color.html
-$dcp-app-primary: mat-palette($mat-pink);
-$dcp-app-accent:  mat-palette($mat-purple, A200, A100, A400);
+$kitty-app-primary: mat-palette($mat-primary);
+$kitty-app-accent:  mat-palette($mat-purple, A200, A100, A400);
 
 // The warn palette is optional (defaults to red).
-$dcp-app-warn:    mat-palette($mat-red);
+$kitty-app-warn:    mat-palette($mat-red);
 
 // Create the theme object (a Sass map containing all of the palettes).
-$dcp-app-theme: mat-light-theme($dcp-app-primary, $dcp-app-accent, $dcp-app-warn);
+$kitty-app-theme: mat-light-theme($kitty-app-primary, $kitty-app-accent, $kitty-app-warn);
 
 // Include theme styles for core and each component used in your app.
 // Alternatively, you can import and @include the theme mixins for each component
 // that you are using.
-@include angular-material-theme($dcp-app-theme);
+@include angular-material-theme($kitty-app-theme);
