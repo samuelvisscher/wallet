@@ -15,6 +15,7 @@ import { KittenDetailComponent } from './components/kitten-detail/kitten-detail.
 import { RouterModule } from '@angular/router';
 import { AppRoutes } from './app.routes';
 import { ApiService, AppService, WalletService } from './services';
+import { HttpClientModule } from '@angular/common/http';
 import './rxjs-operators';
 
 @NgModule({
@@ -34,6 +35,7 @@ import './rxjs-operators';
   ],
   imports: [
     BrowserModule,
+    HttpClientModule,
     RouterModule.forRoot(AppRoutes),
   ],
   providers: [
