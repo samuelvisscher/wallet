@@ -1,3 +1,3 @@
 <app-setup *ngIf="step === 1" (onSubmit)="handleStepOne($event)"></app-setup>
 <app-warning *ngIf="step === 2" (onSubmit)="handleStepTwo()"></app-warning>
-<app-show-seed *ngIf="step === 3"></app-show-seed>
+<app-show-seed *ngIf="step === 3" [seed]="seed" (onSubmit)="handleStepThree()"></app-show-seed>
