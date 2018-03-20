@@ -33,8 +33,11 @@ import { KittenDetailComponent } from './components/kitten-detail/kitten-detail.
   ],
   imports: [
     BrowserModule
+  providers: [
+    AppService,
+    ApiService,
+    WalletService,
   ],
-  providers: [],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
