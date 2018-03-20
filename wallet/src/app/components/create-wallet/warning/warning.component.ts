@@ -1,4 +1,5 @@
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-warning',
@@ -9,9 +10,16 @@ export class WarningComponent implements OnInit {
 
   @Output() onSubmit = new EventEmitter();
 
-  constructor() { }
+  form: FormGroup;
+
+  constructor(
+    private formBuilder: FormBuilder,
+  ) { }
 
   ngOnInit() {
+    this.form = this.formBuilder.group({
+      accepted: ['', Validators.required],
+    });
   }
 
   next() {
