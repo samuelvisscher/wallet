@@ -12,11 +12,15 @@ import { ShowSeedComponent } from './components/create-wallet/show-seed/show-see
 import { FeedComponent } from './components/feed/feed.component';
 import { BreedComponent } from './components/breed/breed.component';
 import { KittenDetailComponent } from './components/kitten-detail/kitten-detail.component';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialogModule } from '@angular/material/dialog';
 import { RouterModule } from '@angular/router';
 import { AppRoutes } from './app.routes';
 import { ApiService, AppService, WalletService } from './services';
 import { HttpClientModule } from '@angular/common/http';
 import './rxjs-operators';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ReactiveFormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
@@ -33,9 +37,16 @@ import './rxjs-operators';
     BreedComponent,
     KittenDetailComponent,
   ],
+  entryComponents: [
+    CreateWalletComponent,
+  ],
   imports: [
     BrowserModule,
+    BrowserAnimationsModule,
     HttpClientModule,
+    MatButtonModule,
+    MatDialogModule,
+    ReactiveFormsModule,
     RouterModule.forRoot(AppRoutes),
   ],
   providers: [

@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-setup',
@@ -7,10 +8,21 @@ import { Component, OnInit } from '@angular/core';
 })
 export class SetupComponent implements OnInit {
 
-  constructor() { }
   @Output() onSubmit = new EventEmitter();
 
+  form: FormGroup;
+
+  constructor(
+    private formBuilder: FormBuilder,
+  ) { }
+
   ngOnInit() {
+    this.form = this.formBuilder.group({
+      name: ['', Validators.required],
+    });
   }
 
+  submit() {
+    this.onSubmit.emit(this.form.value);
+  }
 }

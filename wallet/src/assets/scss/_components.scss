@@ -1,0 +1,24 @@
+@import '_variables.scss';
+
+.field {
+  margin-bottom: $base-size * 2;
+
+  label {
+    color: #4A4A4A;
+    display: block;
+    font-size: $base-size;
+    margin-bottom: $base-size;
+  }
+
+  input {
+    border: 1px solid $primary-color;
+    border-radius: $base-size / 4;
+    box-sizing: border-box;
+    color: $text-color-normal;
+    display: block;
+    font-size: $base-size;
+    line-height: $base-size * 3;
+    padding: 0 $base-size;
+    width: 100%;
+  }
+}
