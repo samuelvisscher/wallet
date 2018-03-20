@@ -4,5 +4,7 @@
     <label for="name">Wallet Name</label>
     <input id="name" formControlName="name" placeholder="e.g. I love cats">
   </div>
-  <button mat-button mat-raised-button color="primary" [disabled]="!form.valid" (click)="submit()">Create</button>
+  <button mat-button mat-raised-button [disabled]="!form.valid" (click)="submit()" class="full-button">
+    Create
+  </button>
 </div>

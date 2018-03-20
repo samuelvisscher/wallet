@@ -13,6 +13,7 @@ import { FeedComponent } from './components/feed/feed.component';
 import { BreedComponent } from './components/breed/breed.component';
 import { KittenDetailComponent } from './components/kitten-detail/kitten-detail.component';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialogModule } from '@angular/material/dialog';
 import { RouterModule } from '@angular/router';
 import { AppRoutes } from './app.routes';
@@ -45,6 +46,7 @@ import { ReactiveFormsModule } from '@angular/forms';
     BrowserAnimationsModule,
     HttpClientModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatDialogModule,
     ReactiveFormsModule,
     RouterModule.forRoot(AppRoutes),

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-show-seed',
@@ -6,6 +6,8 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./show-seed.component.scss']
 })
 export class ShowSeedComponent implements OnInit {
+
+  @Input() seed: string;
 
   constructor() { }
 

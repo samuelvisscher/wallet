@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 
 @Component({
   selector: 'app-warning',
@@ -7,9 +7,14 @@ import { Component, OnInit } from '@angular/core';
 })
 export class WarningComponent implements OnInit {
 
+  @Output() onSubmit = new EventEmitter();
+
   constructor() { }
 
   ngOnInit() {
   }
 
+  next() {
+    this.onSubmit.emit();
+  }
 }

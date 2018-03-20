@@ -17,4 +17,8 @@ export class CreateWalletComponent implements OnInit {
   handleStepOne(values: any) {
     this.step = 2;
   }
+
+  handleStepTwo() {
+    this.step = 3;
+  }
 }
