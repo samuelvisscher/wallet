@@ -21,7 +21,12 @@ export class SidebarComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.walletService.wallets.subscribe(wallets => this.wallets = wallets);
+    this.walletService.wallets.subscribe(wallets => {
+      this.wallets = wallets;
+      if (this.wallets && this.wallets[0]) {
+        this.open(this.wallets[0]);
+      }
+    });
   }
 
   createWallet() {

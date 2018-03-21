@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Wallet, WalletsNewRequest } from '../app.datatypes';
+import { Wallet, WalletsGetRequest, WalletsNewRequest } from '../app.datatypes';
 import { Observable } from 'rxjs/Observable';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { RequestOptions } from '@angular/http';
@@ -13,8 +13,13 @@ export class ApiService {
     private httpClient: HttpClient,
   ) { }
 
+  postWalletsGet(request: WalletsGetRequest): Observable<Wallet> {
+    return this.post('wallets/get', request);
+  }
+
   getWalletsList(): Observable<Wallet[]> {
-    return this.get('wallets/list').map(response => response.wallets);
+    return this.get('wallets/list').map(response => response.wallets)
+      .flatMap(wallets => Observable.forkJoin(wallets.map(wallet => this.postWalletsGet({ label: wallet.label }))));
   }
 
   getWalletsSeed(): Observable<string> {

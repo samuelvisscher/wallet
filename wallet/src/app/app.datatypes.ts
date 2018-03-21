@@ -2,6 +2,10 @@ export class Wallet {
   label: string;
 }
 
+export class WalletsGetRequest {
+  label: string;
+}
+
 export class WalletsNewRequest {
   label: string;
   seed: string;

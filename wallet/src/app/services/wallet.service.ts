@@ -20,8 +20,7 @@ export class WalletService {
     this.loadData();
   }
 
-  private loadData() {
-    this.apiService.getWalletsList().first().subscribe(wallets => this.walletsSubject.next(wallets));
+  loadData() {
+    this.apiService.getWalletsList().subscribe(wallets => this.walletsSubject.next(wallets));
   }
-
 }
