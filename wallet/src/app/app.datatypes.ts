@@ -1,5 +1,5 @@
 export class Wallet {
-
+  label: string;
 }
 
 export class WalletsNewRequest {

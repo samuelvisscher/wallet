@@ -1,6 +1,6 @@
 <div class="-container">
-  <app-sidebar></app-sidebar>
+  <app-sidebar (onSelect)="handleOnSelect($event)"></app-sidebar>
   <div class="-content">
-    <router-outlet></router-outlet>
+    <app-wallet [wallet]="wallet"></app-wallet>
   </div>
 </div>

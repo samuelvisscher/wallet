@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
+import { Wallet } from '../../app.datatypes';
 
 @Component({
   selector: 'app-wallet',
@@ -6,6 +7,8 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./wallet.component.scss']
 })
 export class WalletComponent implements OnInit {
+
+  @Input() wallet: Wallet;
 
   constructor() { }
 

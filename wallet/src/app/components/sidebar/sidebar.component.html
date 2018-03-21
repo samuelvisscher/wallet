@@ -1,6 +1,4 @@
-<p>
-  sidebar works!
-</p>
+<a *ngFor="let wallet of wallets" (click)="open(wallet)">{{ wallet.label }}</a>
 <button mat-button (click)="createWallet()">
   <img src="assets/svg/add-wallet.svg">
 </button>

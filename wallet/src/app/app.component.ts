@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Wallet } from './app.datatypes';
 
 @Component({
   selector: 'app-root',
@@ -7,4 +8,9 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
 
+  wallet: Wallet;
+
+  handleOnSelect(wallet: Wallet) {
+    this.wallet = wallet;
+  }
 }
